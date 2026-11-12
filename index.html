@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport"
           content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height"/>
-    <link rel="shortcut icon" href="src/resources/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
     <link rel="stylesheet" href="style.css"/>
     <!-- Primary Meta Tags -->
     <meta name="title" content="Breakmine - Opensource Minecraft-like game">
@@ -37,8 +37,8 @@
     <meta name="twitter:creator" content="@azuretecdevs">
 
     <!-- Favicons & Icons -->
-    <link rel="icon" type="image/x-icon" href="https://breakmine.com/src/resources/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="https://breakmine.com/src/resources/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="https://game.breakmine.com/src/resources/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://game.breakmine.com/src/resources/favicon.ico">
 
     <!-- Schema.org Structured Data -->
     <script type="application/ld+json">
@@ -165,7 +165,8 @@
     </script>
     <style>
         body {
-            background-image: url('background.png');
+            background-color: #1a1a1a;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('background.png');
             background-size: 64px;
             background-repeat: repeat;
             image-rendering: -moz-crisp-edges;
@@ -175,11 +176,12 @@
         }
 
         nav {
+            position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 1rem;
-            padding: 0;
+            padding: 0 0.7rem 0 0.6rem;
             font-family: 'Arial', sans-serif;
             font-size: 32px;
             background-image: url('stone.png');
@@ -190,6 +192,7 @@
             image-rendering: crisp-edges;
             image-rendering: pixelated;
             height: 64px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
         }
 
         a {
@@ -201,17 +204,46 @@
         a:hover {
             text-decoration: none;
         }
+
+        nav a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-decoration: none;
+            padding: 0.15em 0.35em;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.9);
+            border-radius: 0;
+            height: 35.5px;
+        }
+
+        nav a:hover {
+            color: #97eaff;
+        }
+
+        nav a:hover svg {
+            fill: #97eaff;
+        }
+
+        nav a:first-of-type {
+            margin-left: auto;
+            margin-right: auto;
+        }
     </style>
 </head>
 <body>
     <nav>
-        <img src="logo_hd.png" alt="Logo" style="height: 48px; position: absolute; left: 0.6rem;">
-        
+        <img src="logo_hd.png" alt="Logo" style="height: 48px;">
+        <a href="https://game.breakmine.com/">Play</a>
+        <a href="https://bugs.breakmine.com/">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" height="34px" width="34px" fill="#FFFFFF"><path d="M18.28,40.23q-2.58-1.77-4.18-4.58l-5,2.85L7.6,35.95l5.25-3.05q-0.25-0.85-0.45-1.7t-0.3-1.7H6v-3h6.1q0.1-0.85 0.3-1.7t0.45-1.7L7.6,20l1.5-2.55l4.95,2.9q0.45-0.8 1-1.47t1.15-1.33q-0.1-0.4-0.15-0.77T16,16q0-1.4 0.53-2.73T18,10.9L14.7,7.65L16.8,5.5L20.35,9Q21.2,8.5 22.1,8.25T24,8t1.9,0.25T27.65,9L31.2,5.5l2.1,2.15L30,10.95Q30.9,12 31.43,13.3T31.95,16q0,0.4-0.03,0.75T31.8,17.5q0.6,0.65 1.13,1.32T33.9,20.3l5-2.8l1.5,2.55l-5.25,3q0.3,0.85 0.48,1.7T35.9,26.5H42v3H35.9q-0.1,0.85-0.27,1.72t-0.48,1.73L40.4,36l-1.5,2.55l-5-2.9q-1.6,2.8-4.17,4.58T24,42t-5.72-1.77ZM19.05,15.3q1.15-0.65 2.4-0.98T24,14t2.53,0.32t2.38,0.93q-0.3-1.65-1.75-2.95T24,11t-3.17,1.3t-1.78,3ZM24,39q3.85,0 6.43-3.45T33,28q0-3.75-2.42-7.38T24,17t-6.57,3.63T15,28q0,4.1 2.57,7.55T24,39Zm-1.5-5V22h3V34h-3Z"/></svg>
+        </a>
+        <a href="https://wiki.breakmine.com/">Wiki</a>
+        <a href="https://mods.breakmine.com/">Mods</a>
     </nav>
 
     <div style="place-items: center; display: grid; height: 100%;">
         <div>
-            <p style="text-align: center;"><b style="font-size: 2rem; color: #fff;"><a href="https://game.breakmine.com/">Play</a></b></p>
             <img width="400px" src="/comingsoon.png">
             <p style="text-align: center;"><b style="font-size: 2rem; color: #fff;">Coming Soon!</b></p>
         </div>
