@@ -7,7 +7,147 @@ const ARTICLES_DIR = path.resolve(process.env.ARTICLES_DIR || "./articles");
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 const PASSWORD = process.env.PASSWORD || "";
 
+const DISCORD_TOKEN = (process.env.DISCORD_TOKEN || "").trim();
+const DISCORD_CHANNEL_ID = (process.env.DISCORD_CHANNEL_ID || "").trim();
+const DISCORD_STATE_FILE = path.resolve(
+  process.env.DISCORD_STATE_FILE || "./discord-posts.json"
+);
+
+const DISCORD_API_BASE = "https://discord.com/api/v10";
+
 fs.mkdirSync(ARTICLES_DIR, { recursive: true });
+
+function loadDiscordState() {
+  try {
+    if (!fs.existsSync(DISCORD_STATE_FILE)) return {};
+    const parsed = JSON.parse(fs.readFileSync(DISCORD_STATE_FILE, "utf8"));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    console.warn("Failed to load Discord state file:", err.message);
+    return {};
+  }
+}
+
+function saveDiscordState(state) {
+  try {
+    fs.writeFileSync(DISCORD_STATE_FILE, JSON.stringify(state, null, 2), "utf8");
+  } catch (err) {
+    console.warn("Failed to save Discord state file:", err.message);
+  }
+}
+
+let discordState = loadDiscordState();
+
+function formatUploadDate(date = new Date()) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDiscordMessage({ title, author, category, dateUploaded }) {
+  const cleanTitle = String(title || "Untitled").trim();
+  const cleanAuthor = String(author || "Unknown").trim();
+  const cleanCategory = String(category || "update").trim();
+  const cleanDate = String(dateUploaded || formatUploadDate()).trim();
+
+  return [
+    "@here",
+    `# ${cleanTitle}`,
+    `By ${cleanAuthor}`,
+    `-# ${cleanCategory} / ${cleanDate}`,
+  ].join("\n");
+}
+
+function isDiscordConfigured() {
+  return Boolean(DISCORD_TOKEN && DISCORD_CHANNEL_ID);
+}
+
+async function discordRequest(endpoint, method, body) {
+  const res = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
+    method,
+    headers: {
+      Authorization: `Bot ${DISCORD_TOKEN}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Discord API ${method} ${endpoint} failed (${res.status}): ${errText}`);
+  }
+
+  return res.json();
+}
+
+async function postArticleToDiscord(fileName, article) {
+  if (!isDiscordConfigured()) return;
+
+  const uploadedAt = discordState[fileName]?.uploadedAt || formatUploadDate();
+  const content = formatDiscordMessage({
+    title: article.title,
+    author: article.author,
+    category: article.category,
+    dateUploaded: uploadedAt,
+  });
+
+  const created = await discordRequest(
+    `/channels/${encodeURIComponent(DISCORD_CHANNEL_ID)}/messages`,
+    "POST",
+    {
+      content,
+      allowed_mentions: { parse: ["users", "roles", "everyone"] },
+    }
+  );
+
+  discordState[fileName] = {
+    messageId: created.id,
+    channelId: DISCORD_CHANNEL_ID,
+    uploadedAt,
+  };
+  saveDiscordState(discordState);
+}
+
+async function updateArticleInDiscord(oldFileName, newFileName, article) {
+  if (!isDiscordConfigured()) return;
+
+  const existingRecord = discordState[oldFileName] || discordState[newFileName];
+  if (!existingRecord?.messageId) {
+    await postArticleToDiscord(newFileName, article);
+    return;
+  }
+
+  const targetChannelId = existingRecord.channelId || DISCORD_CHANNEL_ID;
+  const uploadedAt = existingRecord.uploadedAt || formatUploadDate();
+  const content = formatDiscordMessage({
+    title: article.title,
+    author: article.author,
+    category: article.category,
+    dateUploaded: uploadedAt,
+  });
+
+  await discordRequest(
+    `/channels/${encodeURIComponent(targetChannelId)}/messages/${encodeURIComponent(existingRecord.messageId)}`,
+    "PATCH",
+    {
+      content,
+      allowed_mentions: { parse: ["users", "roles", "everyone"] },
+    }
+  );
+
+  if (oldFileName !== newFileName) {
+    delete discordState[oldFileName];
+  }
+
+  discordState[newFileName] = {
+    messageId: existingRecord.messageId,
+    channelId: targetChannelId,
+    uploadedAt,
+  };
+  saveDiscordState(discordState);
+}
 
 function safeFilePath(fileName) {
   const base = path.basename(String(fileName || ""));
@@ -368,15 +508,32 @@ const server = http.createServer(async (req, res) => {
           return sendJson(res, 400, { error: "Invalid filename" });
         }
         const existing = parseArticleHtml(fs.readFileSync(targetPath, "utf8"));
-        const outHtml = buildArticleHtml({
+        const nextArticle = {
           title: body.title ?? existing.title,
           author: body.author ?? existing.author,
           category: body.category ?? existing.category,
           html: body.html ?? existing.html,
-        });
+        };
+        const outHtml = buildArticleHtml(nextArticle);
         fs.writeFileSync(nextPath, outHtml, "utf8");
         if (nextPath !== targetPath) fs.unlinkSync(targetPath);
-        return sendJson(res, 200, { ok: true, file: path.basename(nextPath) });
+
+        let discordSynced = false;
+        let discordError = null;
+        try {
+          await updateArticleInDiscord(targetName, path.basename(nextPath), nextArticle);
+          discordSynced = isDiscordConfigured();
+        } catch (err) {
+          discordError = err.message;
+          console.error("Discord edit failed:", err.message);
+        }
+
+        return sendJson(res, 200, {
+          ok: true,
+          file: path.basename(nextPath),
+          discordSynced,
+          discordError,
+        });
       }
 
       if (req.method === "DELETE") {
@@ -400,14 +557,31 @@ const server = http.createServer(async (req, res) => {
       if (fs.existsSync(targetPath)) {
         return sendJson(res, 409, { error: "Already exists" });
       }
-      const outHtml = buildArticleHtml({
+      const newArticle = {
         title: body.title,
         author: body.author,
         category: body.category,
         html: body.html,
-      });
+      };
+      const outHtml = buildArticleHtml(newArticle);
       fs.writeFileSync(targetPath, outHtml, "utf8");
-      return sendJson(res, 201, { ok: true, file: path.basename(targetPath) });
+
+      let discordSynced = false;
+      let discordError = null;
+      try {
+        await postArticleToDiscord(path.basename(targetPath), newArticle);
+        discordSynced = isDiscordConfigured();
+      } catch (err) {
+        discordError = err.message;
+        console.error("Discord post failed:", err.message);
+      }
+
+      return sendJson(res, 201, {
+        ok: true,
+        file: path.basename(targetPath),
+        discordSynced,
+        discordError,
+      });
     }
 
     sendJson(res, 404, { error: "Not found" });
