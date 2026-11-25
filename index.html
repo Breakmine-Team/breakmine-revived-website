@@ -249,9 +249,119 @@
         }
 
         .page-wrap {
-            max-width: 820px;
+            max-width: 1240px;
             margin: 1.5rem auto 4.5rem auto;
             padding: 0 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .main-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Right Sidebar Styles */
+        .info-sidebar {
+            width: 400px;
+            height: 400px;
+            aspect-ratio: 1 / 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: #141414;
+            background-image: url('infocard.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            overflow: hidden;
+        }
+
+        /* Gradient fade overlay so text blends smoothly over infocard.png */
+        .info-sidebar::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(10, 10, 10, 0.05) 0%,
+                rgba(10, 10, 10, 0.35) 38%,
+                rgba(10, 10, 10, 0.85) 70%,
+                rgba(10, 10, 10, 0.96) 100%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .info-sidebar-content {
+            position: relative;
+            z-index: 2;
+            padding: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+        }
+
+        .info-sidebar-content h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.35rem;
+            color: #fff;
+        }
+
+        .info-sidebar-content p {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #e2e2e2;
+        }
+
+        .info-sidebar-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .sidebar-col {
+            width: 400px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            padding: 2px 5px;
+            margin-bottom: 1rem;
+            background-image: url('stone.png');
+            background-size: 64px;
+            background-repeat: repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .sidebar-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        @media (max-width: 900px) {
+            .page-wrap {
+                flex-direction: column;
+            }
+            .sidebar-col {
+                width: 100%;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            .info-sidebar {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 1 / 1;
+            }
         }
 
         .news-top {
@@ -355,6 +465,10 @@
             font-size: 0.95rem;
         }
 
+        .news-item:hover p {
+            color: #3ea3bd;
+        }
+
         * {
             overflow: auto;
             scrollbar-width: none;
@@ -377,6 +491,7 @@
             display: inline-block;
             margin-bottom: 1.25rem;
             font-size: 0.9rem;
+            text-decoration: none;
         }
 
         .article-view h1 {
@@ -410,7 +525,26 @@
     </nav>
 
     <div class="scroll-area" id="scrollArea">
-        <div class="page-wrap" id="app"></div>
+        <div class="page-wrap">
+            <main class="main-col" id="app"></main>
+
+            <div class="sidebar-col">
+                <div class="sidebar-header">
+                    <h1>About</h1>
+                </div>
+                <aside class="info-sidebar">
+                    <div class="info-sidebar-content">
+                        <center><h2>What is Breakmine?</h2></center>
+                        <p>
+                            Breakmine is an open-source voxel sandbox game, made in JavaScript. Explore infinite worlds, build whatever you imagine, and customize your experience with mods.
+                        </p>
+                        <p>
+                            <i>Developed by SpinningCubes, Paradoxism, Marw-Programmer, and LowQualityCoding.</i>
+                        </p>
+                    </div>
+                </aside>
+            </div>
+        </div>
     </div>
 
     <span style="position: fixed; bottom: 0; right: 0; padding: 1rem; font-size: 12px; color: #ffffff7e;">
@@ -486,6 +620,47 @@
             }
         }
 
+        function renderNewsHeader({ mode = 'feed' } = {}) {
+            const rightHtml = mode === 'article'
+                ? `
+                    <div class="news-filters">
+                        <button class="filter-btn" id="headerBackBtn">Go Back</button>
+                    </div>
+                `
+                : `
+                    <div class="news-filters">
+                        <button class="filter-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all">All</button>
+                        <button class="filter-btn ${currentCategory === 'update' ? 'active' : ''}" data-category="update">Updates</button>
+                        <button class="filter-btn ${currentCategory === 'modding' ? 'active' : ''}" data-category="modding">Modding</button>
+                        <button class="filter-btn ${currentCategory === 'devlog' ? 'active' : ''}" data-category="devlog">Devlog</button>
+                        <button class="filter-btn ${currentCategory === 'community' ? 'active' : ''}" data-category="community">Community</button>
+                    </div>
+                `;
+
+            return `
+                <div class="news-top">
+                    <h1>News</h1>
+                    ${rightHtml}
+                </div>
+            `;
+        }
+
+        function bindHeaderControls() {
+            const backBtn = document.getElementById('headerBackBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    window.location.hash = '';
+                });
+            }
+
+            appEl.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentCategory = btn.dataset.category;
+                    renderFeed();
+                });
+            });
+        }
+
         function renderFeed() {
             const items = currentCategory === 'all'
                 ? articles
@@ -503,40 +678,29 @@
                     <a class="news-item" href="#article/${encodeURIComponent(item.slug)}">
                         <div class="news-meta">${[item.date, item.category, item.author ? `by ${item.author}` : ''].filter(Boolean).join(' / ')}</div>
                         <h2>${item.title}</h2>
-                        <p>${item.summary}</p>
+                        <p>Click to read!</p>
                     </a>
                 `).join('');
             }
 
             appEl.innerHTML = `
-                <div class="news-top">
-                    <h1>News</h1>
-                    <div class="news-filters">
-                        <button class="filter-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all">All</button>
-                        <button class="filter-btn ${currentCategory === 'update' ? 'active' : ''}" data-category="update">Updates</button>
-                        <button class="filter-btn ${currentCategory === 'modding' ? 'active' : ''}" data-category="modding">Modding</button>
-                        <button class="filter-btn ${currentCategory === 'devlog' ? 'active' : ''}" data-category="devlog">Devlog</button>
-                        <button class="filter-btn ${currentCategory === 'community' ? 'active' : ''}" data-category="community">Community</button>
-                    </div>
-                </div>
+                ${renderNewsHeader({ mode: 'feed' })}
                 <div class="news-list">
                     ${bodyHtml}
                 </div>
             `;
 
             document.title = 'Breakmine';
-
-            appEl.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    currentCategory = btn.dataset.category;
-                    renderFeed();
-                });
-            });
+            bindHeaderControls();
         }
 
         async function renderArticle(slug) {
             if (isLoading) {
-                appEl.innerHTML = `<div class="article-view"><p>Loading article...</p></div>`;
+                appEl.innerHTML = `
+                    ${renderNewsHeader({ mode: 'article' })}
+                    <div class="article-view"><p>Loading article...</p></div>
+                `;
+                bindHeaderControls();
                 return;
             }
 
@@ -544,7 +708,11 @@
             let article = articles.find(a => a.slug === decodedSlug);
 
             if (article && article.html === null && article.file) {
-                appEl.innerHTML = `<div class="article-view"><p>Loading article...</p></div>`;
+                appEl.innerHTML = `
+                    ${renderNewsHeader({ mode: 'article' })}
+                    <div class="article-view"><p>Loading article...</p></div>
+                `;
+                bindHeaderControls();
                 try {
                     const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(article.file)}`, { cache: 'no-store' });
                     if (res.ok) {
@@ -566,8 +734,8 @@
             document.title = `${article.title} - Breakmine`;
 
             appEl.innerHTML = `
+                ${renderNewsHeader({ mode: 'article' })}
                 <article class="article-view">
-                    <a class="back-link" href="#">< Back</a>
                     <div class="news-meta">${[article.date, article.category, itemAuthor(article)].filter(Boolean).join(' / ')}</div>
                     <h1>${article.title}</h1>
                     <div class="article-body">
@@ -576,6 +744,7 @@
                 </article>
             `;
 
+            bindHeaderControls();
             scrollAreaEl.scrollTop = 0;
         }
 
