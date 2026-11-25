@@ -6,6 +6,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const ARTICLES_DIR = path.resolve(process.env.ARTICLES_DIR || "./articles");
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 const PASSWORD = process.env.PASSWORD || "";
+const ARTICLE_BASE_URL = (
+  process.env.ARTICLE_BASE_URL || "https://breakmine.com/#article/"
+).trim();
 
 const DISCORD_TOKEN = (process.env.DISCORD_TOKEN || "").trim();
 const DISCORD_CHANNEL_ID = (process.env.DISCORD_CHANNEL_ID || "").trim();
@@ -46,18 +49,38 @@ function formatUploadDate(date = new Date()) {
   });
 }
 
-function formatDiscordMessage({ title, author, category, dateUploaded }) {
+function buildArticleLink(fileName) {
+  const slug = encodeURIComponent(path.basename(String(fileName || ""), ".html"));
+  if (!ARTICLE_BASE_URL) return "";
+  if (ARTICLE_BASE_URL.includes("#")) {
+    const prefix = ARTICLE_BASE_URL.endsWith("/")
+      ? ARTICLE_BASE_URL
+      : `${ARTICLE_BASE_URL}/`;
+    return `${prefix}${slug}`;
+  }
+  const normalizedBase = ARTICLE_BASE_URL.replace(/\/+$/, "");
+  return `${normalizedBase}/#article/${slug}`;
+}
+
+function formatDiscordMessage({ title, author, category, dateUploaded, fileName }) {
   const cleanTitle = String(title || "Untitled").trim();
   const cleanAuthor = String(author || "Unknown").trim();
   const cleanCategory = String(category || "update").trim();
   const cleanDate = String(dateUploaded || formatUploadDate()).trim();
+  const articleUrl = buildArticleLink(fileName);
 
-  return [
+  const lines = [
     "@here",
     `# ${cleanTitle}`,
     `By ${cleanAuthor}`,
     `-# ${cleanCategory} / ${cleanDate}`,
-  ].join("\n");
+  ];
+
+  if (articleUrl) {
+    lines.push(articleUrl);
+  }
+
+  return lines.join("\n");
 }
 
 function isDiscordConfigured() {
@@ -91,6 +114,7 @@ async function postArticleToDiscord(fileName, article) {
     author: article.author,
     category: article.category,
     dateUploaded: uploadedAt,
+    fileName,
   });
 
   const created = await discordRequest(
@@ -126,6 +150,7 @@ async function updateArticleInDiscord(oldFileName, newFileName, article) {
     author: article.author,
     category: article.category,
     dateUploaded: uploadedAt,
+    fileName: newFileName,
   });
 
   await discordRequest(
@@ -531,6 +556,7 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, {
           ok: true,
           file: path.basename(nextPath),
+          url: buildArticleLink(path.basename(nextPath)),
           discordSynced,
           discordError,
         });
@@ -579,6 +605,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 201, {
         ok: true,
         file: path.basename(targetPath),
+        url: buildArticleLink(path.basename(targetPath)),
         discordSynced,
         discordError,
       });
