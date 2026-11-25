@@ -17,6 +17,7 @@ const DISCORD_STATE_FILE = path.resolve(
 );
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
+const MESSAGE_FLAG_SUPPRESS_EMBEDS = 1 << 2; // 4
 
 fs.mkdirSync(ARTICLES_DIR, { recursive: true });
 
@@ -122,6 +123,7 @@ async function postArticleToDiscord(fileName, article) {
     "POST",
     {
       content,
+      flags: MESSAGE_FLAG_SUPPRESS_EMBEDS,
       allowed_mentions: { parse: ["users", "roles", "everyone"] },
     }
   );
@@ -158,6 +160,7 @@ async function updateArticleInDiscord(oldFileName, newFileName, article) {
     "PATCH",
     {
       content,
+      flags: MESSAGE_FLAG_SUPPRESS_EMBEDS,
       allowed_mentions: { parse: ["users", "roles", "everyone"] },
     }
   );
