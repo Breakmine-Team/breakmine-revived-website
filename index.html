@@ -241,7 +241,6 @@
             fill: #5865f2;
         }
 
-        /* Scrollable area inside the 100vh overflow-hidden body */
         .scroll-area {
             height: calc(100vh - 64px);
             overflow-y: auto;
@@ -387,7 +386,6 @@
             line-height: 1.3;
         }
 
-        .article-body p,
         .article-body > * {
             margin: 0 0 1rem 0;
             color: #e0e0e0;
@@ -424,7 +422,7 @@
     <span style="position: fixed; bottom: 0; left: 0; padding: 1rem; font-size: 12px; color: #ffffff7e;">© 2026 SpinningCubes Games™</span>
 
     <script>
-        const API_URL = 'https://newsfeedapi.breakmine.com/articles';
+        const API_BASE = 'https://newsfeedapi.breakmine.com';
         const appEl = document.getElementById('app');
         const scrollAreaEl = document.getElementById('scrollArea');
 
@@ -451,21 +449,19 @@
         }
 
         function normalizeArticle(item) {
-            const slug = item.slug || (item.file ? item.file.replace(/\.html$/i, '') : '');
-            const plainBody = Array.isArray(item.content)
-                ? item.content.map(p => stripTags(p)).join(' ')
-                : stripTags(item.html || item.content || '');
+            const file = item.file || '';
+            const slug = item.slug || (file ? file.replace(/\.html$/i, '') : '');
+            const plainBody = stripTags(item.html || '');
 
             return {
                 slug,
-                file: item.file || (slug ? `${slug}.html` : ''),
+                file: file || (slug ? `${slug}.html` : ''),
                 title: item.title || slug || 'Untitled',
                 date: formatDate(item.date || item.modified || ''),
-                author: item.author || 'Breakmine Revived Team',
+                author: item.author || '',
                 category: (item.category || 'update').toLowerCase(),
                 summary: item.summary || (plainBody.length > 180 ? plainBody.slice(0, 177) + '...' : plainBody),
-                content: item.content ?? null,
-                html: item.html ?? null
+                html: typeof item.html === 'string' ? item.html : null
             };
         }
 
@@ -475,12 +471,10 @@
             handleRoute();
 
             try {
-                const res = await fetch(API_URL, { cache: 'no-store' });
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
+                const res = await fetch(`${API_BASE}/articles`, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                const list = Array.isArray(data) ? data : (Array.isArray(data.articles) ? data.articles : []);
+                const list = Array.isArray(data) ? data : [];
                 articles = list.map(normalizeArticle);
                 isLoading = false;
                 handleRoute();
@@ -501,7 +495,7 @@
             if (isLoading) {
                 bodyHtml = `<div class="news-item"><p>Loading articles...</p></div>`;
             } else if (loadError) {
-                bodyHtml = `<div class="news-item"><p>Could not load articles from newsfeedapi.breakmine.com (${loadError}).</p></div>`;
+                bodyHtml = `<div class="news-item"><p>Could not load articles (${loadError}).</p></div>`;
             } else if (items.length === 0) {
                 bodyHtml = `<div class="news-item"><p>No articles found.</p></div>`;
             } else {
@@ -549,13 +543,15 @@
             const decodedSlug = decodeURIComponent(slug);
             let article = articles.find(a => a.slug === decodedSlug);
 
-            // If full article content wasn't included in the list payload, fetch the individual item
-            if (article && !article.content && !article.html && article.file) {
+            if (article && article.html === null && article.file) {
+                appEl.innerHTML = `<div class="article-view"><p>Loading article...</p></div>`;
                 try {
-                    const res = await fetch(`${API_URL}/${encodeURIComponent(article.file)}`, { cache: 'no-store' });
+                    const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(article.file)}`, { cache: 'no-store' });
                     if (res.ok) {
                         const detail = await res.json();
                         article = { ...article, ...normalizeArticle(detail) };
+                        const idx = articles.findIndex(a => a.slug === article.slug);
+                        if (idx !== -1) articles[idx] = article;
                     }
                 } catch (err) {
                     console.error('Article detail fetch error:', err);
@@ -569,32 +565,22 @@
 
             document.title = `${article.title} - Breakmine`;
 
-            let contentHtml = '';
-            if (Array.isArray(article.content)) {
-                contentHtml = article.content.map(p => `<p>${p}</p>`).join('');
-            } else if (typeof article.html === 'string' && article.html.length > 0) {
-                contentHtml = article.html;
-            } else if (typeof article.content === 'string' && article.content.length > 0) {
-                contentHtml = article.content
-                    .split(/\n{2,}/)
-                    .map(p => `<p>${p}</p>`)
-                    .join('');
-            } else {
-                contentHtml = `<p>${article.summary}</p>`;
-            }
-
             appEl.innerHTML = `
                 <article class="article-view">
                     <a class="back-link" href="#">< Back</a>
-                    <div class="news-meta">${[article.date, article.category, article.author ? `by ${article.author}` : ''].filter(Boolean).join(' / ')}</div>
+                    <div class="news-meta">${[article.date, article.category, itemAuthor(article)].filter(Boolean).join(' / ')}</div>
                     <h1>${article.title}</h1>
                     <div class="article-body">
-                        ${contentHtml}
+                        ${article.html || `<p>${article.summary}</p>`}
                     </div>
                 </article>
             `;
 
             scrollAreaEl.scrollTop = 0;
+        }
+
+        function itemAuthor(article) {
+            return article.author ? `by ${article.author}` : '';
         }
 
         function handleRoute() {

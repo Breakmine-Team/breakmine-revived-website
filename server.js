@@ -18,17 +18,17 @@ function safeFilePath(fileName) {
 
 function escapeAttr(str) {
   return String(str || "")
-    .replace(/&/g, "&")
-    .replace(/"/g, "\"")
-    .replace(/</g, "<")
-    .replace(/>/g, ">");
+    .replace(/&/g, "\x26amp;")
+    .replace(/"/g, "\x26quot;")
+    .replace(/</g, "\x26lt;")
+    .replace(/>/g, "\x26gt;");
 }
 
 function escapeHtml(str) {
   return String(str || "")
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">");
+    .replace(/&/g, "\x26amp;")
+    .replace(/</g, "\x26lt;")
+    .replace(/>/g, "\x26gt;");
 }
 
 function parseArticleHtml(raw) {
@@ -41,18 +41,24 @@ function parseArticleHtml(raw) {
     /<meta\s+name=["']author["']\s+content=["']([\s\S]*?)["']\s*\/?>/i
   );
 
+  const categoryMatch = raw.match(
+    /<meta\s+name=["']category["']\s+content=["']([\s\S]*?)["']\s*\/?>/i
+  );
+
   const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 
   return {
     title: titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").trim() : "",
     author: authorMatch ? authorMatch[1].trim() : "",
+    category: categoryMatch ? categoryMatch[1].trim().toLowerCase() : "update",
     html: bodyMatch ? bodyMatch[1].trim() : raw.trim(),
   };
 }
 
-function buildArticleHtml({ title, author, html }) {
+function buildArticleHtml({ title, author, category, html }) {
   const safeTitle = String(title || "Untitled").trim();
   const safeAuthor = String(author || "").trim();
+  const safeCategory = String(category || "update").trim().toLowerCase();
   const bodyContent = String(html || "");
 
   return `<!DOCTYPE html>
@@ -62,6 +68,7 @@ function buildArticleHtml({ title, author, html }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="title" content="${escapeAttr(safeTitle)}" />
   <meta name="author" content="${escapeAttr(safeAuthor)}" />
+  <meta name="category" content="${escapeAttr(safeCategory)}" />
   <title>${escapeHtml(safeTitle)}</title>
 </head>
 <body>
@@ -84,6 +91,7 @@ function listArticles() {
         file: e.name,
         title: parsed.title || e.name.replace(/\.html$/i, ""),
         author: parsed.author,
+        category: parsed.category,
         modified: stats.mtime.toISOString(),
       };
     })
@@ -135,7 +143,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #eee; display: grid; grid-template-rows: auto 1fr; height: 100vh; }
     header { display: flex; gap: 8px; padding: 10px; background: #1c1c1c; border-bottom: 1px solid #333; align-items: center; flex-wrap: wrap; }
-    input, textarea { background: #0b0b0b; color: #eee; border: 1px solid #333; border-radius: 4px; padding: 7px 9px; font-family: inherit; }
+    input, select, textarea { background: #0b0b0b; color: #eee; border: 1px solid #333; border-radius: 4px; padding: 7px 9px; font-family: inherit; }
     button { padding: 7px 12px; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #fff; cursor: pointer; }
     button.primary { background: #1f6feb; border-color: #1f6feb; }
     button.danger { background: #a4262c; border-color: #a4262c; }
@@ -147,7 +155,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
     .item small { display: block; opacity: 0.75; }
     .pane { padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
     .pane + .pane { border-left: 1px solid #333; }
-    .meta-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .meta-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
     textarea { flex: 1; resize: none; font-family: ui-monospace, monospace; font-size: 14px; line-height: 1.5; }
     #preview { flex: 1; overflow-y: auto; background: #0b0b0b; border: 1px solid #333; border-radius: 4px; padding: 12px; }
   </style>
@@ -166,6 +174,12 @@ const EDITOR_HTML = `<!DOCTYPE html>
         <input id="file" type="text" placeholder="my-article.html" />
         <input id="title" type="text" placeholder="Article Title" />
         <input id="author" type="text" placeholder="Author" />
+        <select id="category">
+          <option value="update">update</option>
+          <option value="modding">modding</option>
+          <option value="devlog">devlog</option>
+          <option value="community">community</option>
+        </select>
       </div>
       <textarea id="html" placeholder="<p>Write HTML here...</p>"></textarea>
       <div style="display:flex; gap:8px;">
@@ -184,6 +198,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
     const fileEl = document.getElementById("file");
     const titleEl = document.getElementById("title");
     const authorEl = document.getElementById("author");
+    const categoryEl = document.getElementById("category");
     const htmlEl = document.getElementById("html");
     const previewEl = document.getElementById("preview");
     const statusEl = document.getElementById("status");
@@ -209,7 +224,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
         const t = document.createElement("div");
         t.textContent = item.title;
         const s = document.createElement("small");
-        s.textContent = [item.file, item.author].filter(Boolean).join(" • ");
+        s.textContent = [item.file, item.category, item.author].filter(Boolean).join(" • ");
         div.append(t, s);
         div.onclick = () => openArticle(item.file);
         listEl.appendChild(div);
@@ -225,6 +240,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
       fileEl.value = data.file;
       titleEl.value = data.title || "";
       authorEl.value = data.author || "";
+      categoryEl.value = data.category || "update";
       htmlEl.value = data.html || "";
       renderPreview();
       loadList();
@@ -236,6 +252,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
       fileEl.value = "";
       titleEl.value = "";
       authorEl.value = "";
+      categoryEl.value = "update";
       htmlEl.value = "<p>Hello world</p>";
       renderPreview();
       loadList();
@@ -250,6 +267,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
         newName: currentFile ? file : undefined,
         title: titleEl.value,
         author: authorEl.value,
+        category: categoryEl.value,
         html: htmlEl.value,
       };
       const res = await fetch(
@@ -353,6 +371,7 @@ const server = http.createServer(async (req, res) => {
         const outHtml = buildArticleHtml({
           title: body.title ?? existing.title,
           author: body.author ?? existing.author,
+          category: body.category ?? existing.category,
           html: body.html ?? existing.html,
         });
         fs.writeFileSync(nextPath, outHtml, "utf8");
@@ -384,6 +403,7 @@ const server = http.createServer(async (req, res) => {
       const outHtml = buildArticleHtml({
         title: body.title,
         author: body.author,
+        category: body.category,
         html: body.html,
       });
       fs.writeFileSync(targetPath, outHtml, "utf8");
