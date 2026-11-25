@@ -19,7 +19,7 @@ function safeFilePath(fileName) {
 function escapeAttr(str) {
   return String(str || "")
     .replace(/&/g, "&")
-    .replace(/"/g, """)
+    .replace(/"/g, "\"")
     .replace(/</g, "<")
     .replace(/>/g, ">");
 }
