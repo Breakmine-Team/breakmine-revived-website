@@ -153,6 +153,10 @@
         })();
     </script>
     <style>
+        [hidden] {
+            display: none !important;
+        }
+
         body {
             background-color: #1a1a1a;
             background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('background.png');
@@ -282,10 +286,20 @@
         }
 
         /* Right Sidebar Styles */
+        .sidebar-col {
+            width: 400px;
+            flex-shrink: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
         .info-sidebar {
             width: 400px;
             height: 400px;
             aspect-ratio: 1 / 1;
+            flex-shrink: 0;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -342,16 +356,14 @@
             margin-bottom: 0;
         }
 
-        .sidebar-col {
-            width: 400px;
-            flex-shrink: 0;
-        }
-
         .sidebar-header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
             padding: 2px 5px;
             margin-bottom: 1rem;
+            flex-shrink: 0;
             background-image: url('stone.png');
             background-size: 64px;
             background-repeat: repeat;
@@ -365,6 +377,179 @@
             margin: 0;
             font-size: 1.5rem;
             color: #fff;
+        }
+
+        /* Play Section Styles (same darkness & inset gradient as .news-item) */
+        .play-section {
+            margin-top: 1rem;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .play-header {
+            margin-bottom: 1rem;
+        }
+
+        .play-body {
+            flex: 1;
+            min-height: 0;
+            padding: 1rem 1.2rem;
+            background-color: rgba(0, 0, 0, 0.25);
+            box-shadow:
+                inset 0 25px 20px -15px rgba(0, 0, 0, 0.45),
+                inset 0 -25px 20px -15px rgba(0, 0, 0, 0.45);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .play-primary-btn {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            padding: 0.6rem 1rem;
+            margin-bottom: 0.75rem;
+            font-family: inherit;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-decoration: none;
+            text-shadow: 0 2px 3px rgba(0, 0, 0, 0.85);
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9);
+            background-color: rgba(65, 135, 45, 0.7);
+            background-image: linear-gradient(rgba(75, 155, 50, 0.55), rgba(40, 95, 25, 0.7)), url('stone.png');
+            background-size: 64px;
+            background-repeat: repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .play-primary-btn:hover {
+            color: #d8ffca;
+            text-decoration: none;
+            background-image: linear-gradient(rgba(95, 185, 65, 0.6), rgba(50, 115, 30, 0.75)), url('stone.png');
+        }
+
+        .play-status {
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: #aaa;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .play-status.error {
+            color: #ff7b7b;
+        }
+
+        .versions-panel {
+            flex: 1;
+            min-height: 56px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .versions-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .version-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .version-row:last-child {
+            border-bottom: none;
+        }
+
+        .version-row:hover {
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .version-row.highlighted {
+            background-color: rgba(48, 214, 255, 0.14);
+        }
+
+        .version-info {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .version-name {
+            font-size: 0.92rem;
+            font-weight: bold;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .version-name.unknown {
+            color: #aaa;
+            font-weight: normal;
+        }
+
+        .version-meta {
+            font-size: 0.74rem;
+            color: #aaa;
+        }
+
+        .version-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-shrink: 0;
+        }
+
+        .version-btn {
+            color: #fff;
+            border: none;
+            padding: 0.22rem 0.5rem;
+            font-family: inherit;
+            font-size: 0.78rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.9);
+            border-radius: 0;
+            background-image: url('stone.png');
+            background-size: 64px;
+            background-repeat: repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .version-btn:hover {
+            color: #97eaff;
+        }
+
+        .version-btn:disabled {
+            opacity: 0.55;
+            cursor: default;
+        }
+
+        .load-more-versions {
+            width: 100%;
+            margin-top: 0.5rem;
+            padding: 0.45rem;
+            text-align: center;
         }
 
         @media (max-width: 900px) {
@@ -385,12 +570,16 @@
             .sidebar-col {
                 width: 100%;
                 max-width: 400px;
+                height: auto;
                 margin: 0 auto;
             }
             .info-sidebar {
                 width: 100%;
                 height: auto;
                 aspect-ratio: 1 / 1;
+            }
+            .versions-panel {
+                max-height: 300px;
             }
         }
 
@@ -611,6 +800,23 @@
                         </p>
                     </div>
                 </aside>
+
+                <section class="play-section" aria-label="Play Breakmine">
+                    <div class="sidebar-header play-header">
+                        <h1>Play</h1>
+                        <button type="button" class="filter-btn" id="toggleVersionsBtn">Load old versions</button>
+                    </div>
+
+                    <div class="play-body">
+                        <a class="play-primary-btn" id="playPrimaryBtn" href="https://game.breakmine.com/">Play this version</a>
+                        <div class="play-status" id="launcherStatus" hidden></div>
+
+                        <div class="versions-panel" id="versionsPanel">
+                            <ul class="versions-list" id="builds"></ul>
+                            <button type="button" class="version-btn load-more-versions" id="loadMore" hidden>Load older builds</button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -938,6 +1144,396 @@
 
         window.addEventListener('hashchange', handleRoute);
         fetchArticles();
+
+        /* Integrated Launcher Logic */
+        (function initBreakmineLauncher() {
+            "use strict";
+
+            var REPO = "Breakmine-Team/data-store";
+            var API_COMMITS = "https://api.github.com/repos/" + REPO + "/commits";
+            var RAW = "https://raw.githubusercontent.com/" + REPO;
+            var DATASTORE_BASE = "https://datastore.breakmine.com";
+            var PER_PAGE = 100;
+            var MAX_CACHED_BUILDS = 2;
+
+            var listEl = document.getElementById("builds");
+            var statusEl = document.getElementById("launcherStatus");
+            var loadMoreEl = document.getElementById("loadMore");
+            var playPrimaryEl = document.getElementById("playPrimaryBtn");
+            var toggleVersionsEl = document.getElementById("toggleVersionsBtn");
+
+            var page = 0;
+            var loading = false;
+            var more = true;
+            var oldVersionsLoaded = false;
+            var pendingVersions = [];
+            var pumpingVersions = false;
+            var versionFileSince = null;
+            var versionHistoryPromise = null;
+
+            var buildCache = new Map();
+            var versionCache = new Map();
+
+            function escapeHtml(value) {
+                return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+                    return { "&": "&", "<": "<", ">": ">", '"': "\"", "'": "'" }[ch];
+                });
+            }
+
+            function shortSha(sha) {
+                return String(sha).slice(0, 7);
+            }
+
+            function formatBuildDate(iso) {
+                var date = new Date(iso);
+                if (isNaN(date.getTime())) return "unknown date";
+                return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+            }
+
+            function setStatus(text, isError) {
+                statusEl.textContent = text || "";
+                statusEl.hidden = !text;
+                statusEl.classList.toggle("error", Boolean(isError));
+            }
+
+            function fetchJson(url) {
+                return fetch(url, { headers: { Accept: "application/vnd.github+json" } }).then(function (res) {
+                    if (res.ok) return res.json();
+
+                    if (res.status === 403 || res.status === 429) {
+                        var reset = Number(res.headers.get("x-ratelimit-reset"));
+                        var when = reset ? new Date(reset * 1000).toLocaleTimeString() : "";
+                        throw new Error("GitHub rate limit reached" + (when ? " - resets at " + when : "") + ".");
+                    }
+                    throw new Error("GitHub API returned HTTP " + res.status + ".");
+                });
+            }
+
+            function ensureVersionHistory() {
+                if (versionHistoryPromise) return versionHistoryPromise;
+
+                versionHistoryPromise = fetchJson(API_COMMITS + "?path=version.txt&per_page=" + PER_PAGE)
+                    .then(function (commits) {
+                        if (!Array.isArray(commits) || commits.length === 0 || commits.length >= PER_PAGE) return;
+                        var oldest = commits[commits.length - 1];
+                        var date = oldest && oldest.commit && oldest.commit.committer
+                            ? oldest.commit.committer.date
+                            : "";
+                        var timestamp = Date.parse(date);
+                        if (!isNaN(timestamp)) versionFileSince = timestamp;
+                    })
+                    .catch(function () {
+                        versionHistoryPromise = null;
+                    });
+
+                return versionHistoryPromise;
+            }
+
+            function loadVersion(sha) {
+                var key = sha === "HEAD" ? "__head__" : sha;
+                if (versionCache.has(key)) return Promise.resolve(versionCache.get(key));
+
+                return fetch(RAW + "/" + sha + "/version.txt").then(function (res) {
+                    if (!res.ok) return "";
+                    return res.text();
+                }).then(function (text) {
+                    var version = String(text || "").trim().split(/\s+/)[0] || "";
+                    versionCache.set(key, version);
+                    return version;
+                }).catch(function () {
+                    versionCache.set(key, "");
+                    return "";
+                });
+            }
+
+            function showUnknownVersion(row, title) {
+                var label = row.querySelector("[data-version]");
+                if (!label) return;
+                label.textContent = "unknown version";
+                label.classList.add("unknown");
+                label.title = title;
+            }
+
+            function pumpVersions() {
+                if (pumpingVersions) return;
+                pumpingVersions = true;
+
+                (function next() {
+                    if (pendingVersions.length === 0) {
+                        pumpingVersions = false;
+                        return;
+                    }
+
+                    var batch = pendingVersions.splice(0, 6);
+                    Promise.all(batch.map(function (entry) {
+                        return loadVersion(entry.sha).then(function (version) {
+                            var label = entry.row.querySelector("[data-version]");
+                            if (!label) return;
+                            if (version) {
+                                label.textContent = version;
+                                label.title = version;
+                            } else {
+                                label.textContent = "unknown version";
+                                label.classList.add("unknown");
+                                label.title = "This commit has no version.txt";
+                            }
+                        });
+                    })).then(next, next);
+                })();
+            }
+
+            function queueVersion(row, sha) {
+                pendingVersions.push({ row: row, sha: sha });
+                pumpVersions();
+            }
+
+            function createBuildRow(commit) {
+                var sha = commit.sha;
+                var date = commit.commit && commit.commit.committer ? commit.commit.committer.date : "";
+
+                var row = document.createElement("li");
+                row.className = "version-row";
+                row.dataset.sha = sha;
+                row.innerHTML =
+                    '<div class="version-info">' +
+                        '<span class="version-name" data-version>loading…</span>' +
+                        '<span class="version-meta">' + escapeHtml(shortSha(sha)) + " · " + escapeHtml(formatBuildDate(date)) + "</span>" +
+                    "</div>" +
+                    '<div class="version-actions">' +
+                        '<button type="button" class="version-btn" data-act="play">Play</button>' +
+                        '<button type="button" class="version-btn" data-act="download" title="Download build HTML">DL</button>' +
+                    "</div>";
+
+                row.querySelector('[data-act="play"]').addEventListener("click", function () {
+                    playBuild(sha);
+                });
+                row.querySelector('[data-act="download"]').addEventListener("click", function () {
+                    downloadBuild(sha, this);
+                });
+
+                var committedAt = Date.parse(date);
+                var hasVersionFile = versionFileSince === null || isNaN(committedAt) || committedAt >= versionFileSince;
+                if (hasVersionFile) queueVersion(row, sha);
+                else showUnknownVersion(row, "Published before version.txt existed");
+
+                return row;
+            }
+
+            function appendBuildRow(commit) {
+                var row = createBuildRow(commit);
+                listEl.appendChild(row);
+                return row;
+            }
+
+            function loadNewestOnly() {
+                if (oldVersionsLoaded || loading) return Promise.resolve();
+                loading = true;
+                setStatus("Loading latest build…");
+
+                return Promise.all([
+                    ensureVersionHistory(),
+                    fetchJson(API_COMMITS + "?path=index.html&per_page=1&page=1"),
+                    loadVersion("HEAD")
+                ]).then(function (results) {
+                    var commits = results[1];
+                    var latestVersion = results[2];
+
+                    if (latestVersion && !wantedSha) {
+                        playPrimaryEl.textContent = "Play this version (" + latestVersion + ")";
+                    }
+
+                    if (!oldVersionsLoaded && Array.isArray(commits) && commits.length > 0) {
+                        listEl.innerHTML = "";
+                        listEl.appendChild(createBuildRow(commits[0]));
+                        setStatus("");
+                    } else if (!oldVersionsLoaded) {
+                        setStatus("");
+                    }
+                }).catch(function () {
+                    if (!oldVersionsLoaded) setStatus("");
+                }).then(function () {
+                    loading = false;
+                });
+            }
+
+            function loadPage() {
+                if (loading || !more) return Promise.resolve();
+                loading = true;
+                loadMoreEl.disabled = true;
+                setStatus("Loading build history…");
+
+                var targetPage = page + 1;
+
+                return Promise.all([
+                    ensureVersionHistory(),
+                    fetchJson(API_COMMITS + "?path=index.html&per_page=" + PER_PAGE + "&page=" + targetPage)
+                ])
+                    .then(function (results) {
+                        var commits = results[1];
+                        if (!Array.isArray(commits)) throw new Error("Unexpected response from GitHub.");
+
+                        if (!oldVersionsLoaded) {
+                            listEl.innerHTML = "";
+                            oldVersionsLoaded = true;
+                        }
+
+                        page = targetPage;
+                        more = commits.length === PER_PAGE;
+
+                        if (page === 1 && commits.length === 0) {
+                            setStatus("No builds have been published yet.");
+                            return [];
+                        }
+
+                        setStatus("");
+                        commits.forEach(appendBuildRow);
+                        loadMoreEl.hidden = !more;
+                        return commits;
+                    })
+                    .catch(function (err) {
+                        setStatus("Could not load builds: " + (err && err.message ? err.message : err), true);
+                        return [];
+                    })
+                    .then(function (commits) {
+                        loading = false;
+                        loadMoreEl.disabled = false;
+                        return commits || [];
+                    });
+            }
+
+            function getBuild(sha) {
+                var cached = buildCache.get(sha);
+                if (cached) return Promise.resolve(cached);
+
+                return fetch(RAW + "/" + sha + "/index.html").then(function (res) {
+                    if (!res.ok) throw new Error("Could not download this build (HTTP " + res.status + ").");
+                    return res.text();
+                }).then(function (html) {
+                    var blob = new Blob([html], { type: "text/html" });
+                    var entry = { blob: blob, url: URL.createObjectURL(blob) };
+
+                    buildCache.set(sha, entry);
+                    while (buildCache.size > MAX_CACHED_BUILDS) {
+                        var oldestSha = buildCache.keys().next().value;
+                        URL.revokeObjectURL(buildCache.get(oldestSha).url);
+                        buildCache.delete(oldestSha);
+                    }
+                    return entry;
+                });
+            }
+
+            function buildFileName(sha) {
+                var version = versionCache.get(sha);
+                var label = version ? version.replace(/[^A-Za-z0-9._-]/g, "") : "";
+                return "breakmine-" + (label ? label + "-" : "") + shortSha(sha) + ".html";
+            }
+
+            function triggerDownload(blob, sha) {
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement("a");
+                link.href = url;
+                link.download = buildFileName(sha);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+            }
+
+            function downloadBuild(sha, button) {
+                var original = button.textContent;
+                button.disabled = true;
+                button.textContent = "…";
+
+                getBuild(sha).then(function (entry) {
+                    triggerDownload(entry.blob, sha);
+                    button.textContent = "✓";
+                    setTimeout(function () {
+                        button.textContent = original;
+                        button.disabled = false;
+                    }, 1500);
+                }).catch(function (err) {
+                    button.textContent = original;
+                    button.disabled = false;
+                    setStatus(err && err.message ? err.message : String(err), true);
+                });
+            }
+
+            function resolveBuildUrl(sha) {
+                var served = DATASTORE_BASE + "/build/" + sha + "/index.html";
+                return fetch(served, { method: "HEAD" }).then(function (res) {
+                    return res.ok ? { url: served } : getBuild(sha).then(function (entry) {
+                        return { url: entry.url };
+                    });
+                }).catch(function () {
+                    return getBuild(sha).then(function (entry) {
+                        return { url: entry.url };
+                    });
+                });
+            }
+
+            function playBuild(sha) {
+                var tab = window.open("", "_blank");
+                if (!tab) {
+                    setStatus("Your browser blocked the new tab. Allow pop-ups and try again.", true);
+                    return;
+                }
+
+                try {
+                    tab.document.title = "Loading Breakmine…";
+                    tab.document.body.innerHTML =
+                        '<p style="font:16px/1.5 sans-serif;padding:24px;">Opening Breakmine build ' +
+                        escapeHtml(shortSha(sha)) + "…</p>";
+                } catch (err) {
+                    // Blank tab navigation will still proceed.
+                }
+
+                resolveBuildUrl(sha).then(function (target) {
+                    if (tab.closed) return;
+                    tab.location.replace(target.url);
+                }).catch(function (err) {
+                    try { tab.close(); } catch (e) {}
+                    setStatus("Could not load build: " + (err && err.message ? err.message : err), true);
+                });
+            }
+
+            toggleVersionsEl.addEventListener("click", function () {
+                if (!oldVersionsLoaded) {
+                    toggleVersionsEl.classList.add("active");
+                    toggleVersionsEl.textContent = "Old versions loaded";
+                    loadPage();
+                } else if (more) {
+                    loadPage();
+                }
+            });
+
+            loadMoreEl.addEventListener("click", function () {
+                loadPage();
+            });
+
+            var wantedSha = new URLSearchParams(window.location.search).get("sha");
+            if (wantedSha) {
+                playPrimaryEl.textContent = "Play build " + shortSha(wantedSha);
+                playPrimaryEl.href = "#";
+                playPrimaryEl.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    playBuild(wantedSha);
+                });
+
+                toggleVersionsEl.classList.add("active");
+                toggleVersionsEl.textContent = "Old versions loaded";
+                loadPage().then(function () {
+                    var row = listEl.querySelector('.version-row[data-sha="' + wantedSha + '"]');
+                    if (!row) {
+                        setStatus('No published build found for commit "' + wantedSha + '".', true);
+                        return;
+                    }
+                    row.classList.add("highlighted");
+                    row.scrollIntoView({ block: "center" });
+                });
+            } else {
+                loadNewestOnly();
+            }
+        })();
     </script>
 </body>
 </html>
