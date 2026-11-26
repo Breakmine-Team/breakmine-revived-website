@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 
 const PORT = Number(process.env.PORT) || 3000;
 const ARTICLES_DIR = path.resolve(process.env.ARTICLES_DIR || "./articles");
@@ -16,10 +17,230 @@ const DISCORD_STATE_FILE = path.resolve(
   process.env.DISCORD_STATE_FILE || "./discord-posts.json"
 );
 
+const PUSH_SUBS_FILE = path.resolve(
+  process.env.PUSH_SUBS_FILE || "./push-subscriptions.json"
+);
+const VAPID_KEYS_FILE = path.resolve(
+  process.env.VAPID_KEYS_FILE || "./vapid-keys.json"
+);
+const VAPID_SUBJECT = (
+  process.env.VAPID_SUBJECT || "mailto:admin@breakmine.com"
+).trim();
+
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MESSAGE_FLAG_SUPPRESS_EMBEDS = 1 << 2; // 4
 
 fs.mkdirSync(ARTICLES_DIR, { recursive: true });
+
+/* -------------------- Web Push (VAPID + RFC 8291 / 8188) -------------------- */
+
+function b64urlEncode(buf) {
+  return Buffer.from(buf)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function b64urlDecode(str) {
+  const padded = String(str).replace(/-/g, "+").replace(/_/g, "/");
+  const padLen = (4 - (padded.length % 4)) % 4;
+  return Buffer.from(padded + "=".repeat(padLen), "base64");
+}
+
+function loadOrCreateVapidKeys() {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    return {
+      publicKey: process.env.VAPID_PUBLIC_KEY.trim(),
+      privateKey: process.env.VAPID_PRIVATE_KEY.trim(),
+    };
+  }
+  try {
+    if (fs.existsSync(VAPID_KEYS_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(VAPID_KEYS_FILE, "utf8"));
+      if (parsed?.publicKey && parsed?.privateKey) return parsed;
+    }
+  } catch (err) {
+    console.warn("Failed to read VAPID keys file:", err.message);
+  }
+
+  const ecdh = crypto.createECDH("prime256v1");
+  ecdh.generateKeys();
+  const keys = {
+    publicKey: b64urlEncode(ecdh.getPublicKey()),
+    privateKey: b64urlEncode(ecdh.getPrivateKey()),
+  };
+
+  try {
+    fs.writeFileSync(VAPID_KEYS_FILE, JSON.stringify(keys, null, 2), "utf8");
+  } catch (err) {
+    console.warn("Failed to save VAPID keys file:", err.message);
+  }
+  return keys;
+}
+
+const vapidKeys = loadOrCreateVapidKeys();
+
+function loadPushSubscriptions() {
+  try {
+    if (!fs.existsSync(PUSH_SUBS_FILE)) return [];
+    const parsed = JSON.parse(fs.readFileSync(PUSH_SUBS_FILE, "utf8"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn("Failed to load push subscriptions:", err.message);
+    return [];
+  }
+}
+
+function savePushSubscriptions(subs) {
+  try {
+    fs.writeFileSync(PUSH_SUBS_FILE, JSON.stringify(subs, null, 2), "utf8");
+  } catch (err) {
+    console.warn("Failed to save push subscriptions:", err.message);
+  }
+}
+
+let pushSubscriptions = loadPushSubscriptions();
+
+function savePushSubscription(sub) {
+  if (!sub || typeof sub.endpoint !== "string" || !sub.keys?.p256dh || !sub.keys?.auth) {
+    throw new Error("Invalid push subscription");
+  }
+  const idx = pushSubscriptions.findIndex((s) => s.endpoint === sub.endpoint);
+  if (idx >= 0) {
+    pushSubscriptions[idx] = sub;
+  } else {
+    pushSubscriptions.push(sub);
+  }
+  savePushSubscriptions(pushSubscriptions);
+}
+
+function createVapidAuthHeader(endpointUrl) {
+  const origin = new URL(endpointUrl).origin;
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64urlEncode(JSON.stringify({ typ: "JWT", alg: "ES256" }));
+  const payload = b64urlEncode(
+    JSON.stringify({ aud: origin, exp: now + 12 * 3600, sub: VAPID_SUBJECT })
+  );
+  const unsigned = `${header}.${payload}`;
+
+  const privBuf = b64urlDecode(vapidKeys.privateKey);
+  const pubBuf = b64urlDecode(vapidKeys.publicKey);
+  const pkcs8Header = Buffer.from(
+    "308141020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420",
+    "hex"
+  );
+  const pubTag = Buffer.from("a123032100", "hex");
+  const der = Buffer.concat([pkcs8Header, privBuf, pubTag, pubBuf]);
+  const keyObj = crypto.createPrivateKey({ key: der, format: "der", type: "pkcs8" });
+  const sig = crypto.sign("sha256", Buffer.from(unsigned), {
+    key: keyObj,
+    dsaEncoding: "ieee-p1363",
+  });
+
+  return `vapid t=${unsigned}.${b64urlEncode(sig)}, k=${vapidKeys.publicKey}`;
+}
+
+function hkdfExtractAndExpand(salt, ikm, info, len) {
+  const prk = crypto.createHmac("sha256", salt).update(ikm).digest();
+  const t = crypto
+    .createHmac("sha256", prk)
+    .update(Buffer.concat([Buffer.from(info), Buffer.from([1])]))
+    .digest();
+  return t.subarray(0, len);
+}
+
+function encryptWebPushPayload(subscription, jsonPayload) {
+  const clientPub = b64urlDecode(subscription.keys.p256dh);
+  const clientAuth = b64urlDecode(subscription.keys.auth);
+
+  const serverEcdh = crypto.createECDH("prime256v1");
+  serverEcdh.generateKeys();
+  const serverPub = serverEcdh.getPublicKey(); // 65 bytes uncompressed
+  const sharedSecret = serverEcdh.computeSecret(clientPub);
+
+  const salt = crypto.randomBytes(16);
+  const authInfo = Buffer.concat([
+    Buffer.from("WebPush: info\0"),
+    clientPub,
+    serverPub,
+  ]);
+  const ikm = hkdfExtractAndExpand(clientAuth, sharedSecret, authInfo, 32);
+
+  const cek = hkdfExtractAndExpand(salt, ikm, "Content-Encoding: aes128gcm\0", 16);
+  const nonce = hkdfExtractAndExpand(salt, ikm, "Content-Encoding: nonce\0", 12);
+
+  const plainBuf = Buffer.from(JSON.stringify(jsonPayload), "utf8");
+  const padded = Buffer.concat([plainBuf, Buffer.from([2])]); // delimiter 0x02
+
+  const cipher = crypto.createCipheriv("aes-128-gcm", cek, nonce);
+  const encrypted = Buffer.concat([cipher.update(padded), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  // RFC 8188 aes128gcm header: salt(16) + rs(4) + idlen(1) + keyid(65)
+  const rsBuf = Buffer.alloc(4);
+  rsBuf.writeUInt32BE(4096, 0);
+  const header = Buffer.concat([
+    salt,
+    rsBuf,
+    Buffer.from([serverPub.length]),
+    serverPub,
+  ]);
+
+  return Buffer.concat([header, encrypted, tag]);
+}
+
+async function notifySubscribersNewArticle(fileName, article) {
+  if (!pushSubscriptions.length) return { sent: 0, failed: 0 };
+
+  const payload = {
+    title: `New Breakmine Article: ${article.title || "Untitled"}`,
+    body: [article.category || "update", article.author ? `by ${article.author}` : ""]
+      .filter(Boolean)
+      .join(" / "),
+    url: buildArticleLink(fileName),
+  };
+
+  let sent = 0;
+  let failed = 0;
+  const remaining = [];
+
+  for (const sub of pushSubscriptions) {
+    try {
+      const body = encryptWebPushPayload(sub, payload);
+      const res = await fetch(sub.endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: createVapidAuthHeader(sub.endpoint),
+          "Content-Encoding": "aes128gcm",
+          "Content-Type": "application/octet-stream",
+          TTL: "86400",
+        },
+        body,
+      });
+
+      if (res.ok || res.status === 201) {
+        sent++;
+        remaining.push(sub);
+      } else if (res.status === 404 || res.status === 410) {
+        // Subscription expired or unsubscribed
+        failed++;
+      } else {
+        failed++;
+        remaining.push(sub);
+      }
+    } catch {
+      failed++;
+      remaining.push(sub);
+    }
+  }
+
+  pushSubscriptions = remaining;
+  savePushSubscriptions(pushSubscriptions);
+  return { sent, failed };
+}
+
+/* -------------------- Discord Sync -------------------- */
 
 function loadDiscordState() {
   try {
@@ -176,6 +397,8 @@ async function updateArticleInDiscord(oldFileName, newFileName, article) {
   };
   saveDiscordState(discordState);
 }
+
+/* -------------------- Article Storage & HTTP -------------------- */
 
 function safeFilePath(fileName) {
   const base = path.basename(String(fileName || ""));
@@ -517,7 +740,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
       if (!url) return;
       if (mode !== "rich") switchMode("rich");
       richEl.focus();
-      const safeUrl = url.trim().replace(/"/g, "\\"");
+      const safeUrl = url.trim().replace(/"/g, """);
       document.execCommand(
         "insertHTML",
         false,
@@ -663,6 +886,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    if (req.method === "GET" && url.pathname === "/push/vapid-public-key") {
+      return sendJson(res, 200, { publicKey: vapidKeys.publicKey });
+    }
+
+    if (req.method === "POST" && url.pathname === "/push/subscribe") {
+      const sub = await readJsonBody(req);
+      savePushSubscription(sub);
+      return sendJson(res, 201, { ok: true, subscribers: pushSubscriptions.length });
+    }
+
     if (req.method === "GET" && url.pathname === "/articles") {
       return sendJson(res, 200, listArticles());
     }
@@ -767,12 +1000,18 @@ const server = http.createServer(async (req, res) => {
         console.error("Discord post failed:", err.message);
       }
 
+      const pushResult = await notifySubscribersNewArticle(
+        path.basename(targetPath),
+        newArticle
+      ).catch((err) => ({ sent: 0, failed: 0, error: err.message }));
+
       return sendJson(res, 201, {
         ok: true,
         file: path.basename(targetPath),
         url: buildArticleLink(path.basename(targetPath)),
         discordSynced,
         discordError,
+        push: pushResult,
       });
     }
 
