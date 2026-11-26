@@ -517,7 +517,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
       if (!url) return;
       if (mode !== "rich") switchMode("rich");
       richEl.focus();
-      const safeUrl = url.trim().replace(/"/g, """);
+      const safeUrl = url.trim().replace(/"/g, "\"");
       document.execCommand(
         "insertHTML",
         false,
