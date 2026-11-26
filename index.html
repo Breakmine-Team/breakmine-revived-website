@@ -404,13 +404,20 @@
             flex-direction: column;
         }
 
-        .play-primary-btn {
-            display: block;
+        .play-split {
+            position: relative;
+            display: flex;
             width: 100%;
+            margin-bottom: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .play-primary-btn {
+            flex: 1;
+            min-width: 0;
             box-sizing: border-box;
             text-align: center;
             padding: 0.6rem 1rem;
-            margin-bottom: 0.75rem;
             font-family: inherit;
             font-size: 1.05rem;
             font-weight: bold;
@@ -420,7 +427,6 @@
             border: none;
             border-radius: 0;
             cursor: pointer;
-            flex-shrink: 0;
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9);
             background-color: rgba(65, 135, 45, 0.7);
             background-image: linear-gradient(rgba(75, 155, 50, 0.55), rgba(40, 95, 25, 0.7)), url('stone.png');
@@ -436,6 +442,73 @@
             color: #d8ffca;
             text-decoration: none;
             background-image: linear-gradient(rgba(95, 185, 65, 0.6), rgba(50, 115, 30, 0.75)), url('stone.png');
+        }
+
+        .play-split-toggle {
+            width: 2.3rem;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 2px 3px rgba(0, 0, 0, 0.85);
+            border: none;
+            border-left: 1px solid rgba(0, 0, 0, 0.55);
+            border-radius: 0;
+            cursor: pointer;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.9);
+            background-color: rgba(65, 135, 45, 0.7);
+            background-image: linear-gradient(rgba(75, 155, 50, 0.55), rgba(40, 95, 25, 0.7)), url('stone.png');
+            background-size: 64px;
+            background-repeat: repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .play-split-toggle:hover {
+            color: #d8ffca;
+            background-image: linear-gradient(rgba(95, 185, 65, 0.6), rgba(50, 115, 30, 0.75)), url('stone.png');
+        }
+
+        .play-split-menu {
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 0;
+            right: 0;
+            z-index: 25;
+            display: flex;
+            flex-direction: column;
+            background-color: #16181a;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75), inset 0 0 8px rgba(0, 0, 0, 0.9);
+        }
+
+        .play-split-item {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: bold;
+            color: #e8f8ff;
+            text-decoration: none;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+        }
+
+        .play-split-item:last-child {
+            border-bottom: none;
+        }
+
+        .play-split-item:hover {
+            color: #97eaff;
+            background-color: rgba(48, 214, 255, 0.14);
         }
 
         .play-status {
@@ -808,7 +881,13 @@
                     </div>
 
                     <div class="play-body">
-                        <a class="play-primary-btn" id="playPrimaryBtn" href="https://game.breakmine.com/">Play latest</a>
+                        <div class="play-split" id="playSplit">
+                            <a class="play-primary-btn" id="playPrimaryBtn" href="https://game.breakmine.com/">Play latest</a>
+
+                            <div class="play-split-menu" id="playSplitMenu" role="menu" hidden>
+                                <a class="play-split-item" id="playBetaMenuBtn" href="https://beta.breakmine.com/" role="menuitem">Beta</a>
+                            </div>
+                        </div>
                         <div class="play-status" id="launcherStatus" hidden></div>
 
                         <div class="versions-panel" id="versionsPanel">
@@ -1153,6 +1232,7 @@
             var API_COMMITS = "https://api.github.com/repos/" + REPO + "/commits";
             var RAW = "https://raw.githubusercontent.com/" + REPO;
             var DATASTORE_BASE = "https://datastore.breakmine.com";
+            var BETA_URL = "https://beta.breakmine.com/";
             var PER_PAGE = 100;
             var MAX_CACHED_BUILDS = 2;
 
@@ -1160,6 +1240,9 @@
             var statusEl = document.getElementById("launcherStatus");
             var loadMoreEl = document.getElementById("loadMore");
             var playPrimaryEl = document.getElementById("playPrimaryBtn");
+            var playSplitToggleEl = document.getElementById("playSplitToggle");
+            var playSplitMenuEl = document.getElementById("playSplitMenu");
+            var playBetaMenuEl = document.getElementById("playBetaMenuBtn");
             var toggleVersionsEl = document.getElementById("toggleVersionsBtn");
 
             var page = 0;
@@ -1170,9 +1253,44 @@
             var pumpingVersions = false;
             var versionFileSince = null;
             var versionHistoryPromise = null;
+            var latestBetaCommit = null;
+            var latestBetaVersion = "";
 
             var buildCache = new Map();
             var versionCache = new Map();
+
+            function setSplitMenuOpen(open) {
+                if (!playSplitMenuEl || !playSplitToggleEl) return;
+                playSplitMenuEl.hidden = !open;
+                playSplitToggleEl.setAttribute("aria-expanded", String(open));
+            }
+
+            if (playSplitToggleEl) {
+                playSplitToggleEl.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var isOpen = playSplitMenuEl && !playSplitMenuEl.hidden;
+                    setSplitMenuOpen(!isOpen);
+                });
+            }
+
+            if (playBetaMenuEl) {
+                playBetaMenuEl.href = BETA_URL;
+                playBetaMenuEl.addEventListener("click", function () {
+                    setSplitMenuOpen(false);
+                });
+            }
+
+            document.addEventListener("click", function (e) {
+                if (!playSplitMenuEl || playSplitMenuEl.hidden) return;
+                if (!e.target.closest("#playSplit")) {
+                    setSplitMenuOpen(false);
+                }
+            });
+
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") setSplitMenuOpen(false);
+            });
 
             function escapeHtml(value) {
                 return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
@@ -1246,6 +1364,17 @@
                 });
             }
 
+            function loadBetaVersion(sha) {
+                return fetch(RAW + "/" + sha + "/version-beta.txt").then(function (res) {
+                    if (!res.ok) return "";
+                    return res.text();
+                }).then(function (text) {
+                    return String(text || "").trim().split(/\s+/)[0] || "";
+                }).catch(function () {
+                    return "";
+                });
+            }
+
             function showUnknownVersion(row, title) {
                 var label = row.querySelector("[data-version]");
                 if (!label) return;
@@ -1287,6 +1416,34 @@
                 pumpVersions();
             }
 
+            function createBetaRow(commit, betaVersion) {
+                var sha = commit ? commit.sha : "HEAD";
+                var date = commit && commit.commit && commit.commit.committer ? commit.commit.committer.date : "";
+                var label = betaVersion ? "Beta (" + betaVersion + ")" : "Beta";
+
+                var row = document.createElement("li");
+                row.className = "version-row";
+                row.dataset.beta = "1";
+                row.innerHTML =
+                    '<div class="version-info">' +
+                        '<span class="version-name">' + escapeHtml(label) + "</span>" +
+                        '<span class="version-meta">' + escapeHtml(shortSha(sha)) + (date ? " · " + escapeHtml(formatBuildDate(date)) : "") + "</span>" +
+                    "</div>" +
+                    '<div class="version-actions">' +
+                        '<button type="button" class="version-btn" data-act="play-beta">Play</button>' +
+                        '<button type="button" class="version-btn" data-act="download-beta" title="Download beta HTML">DL</button>' +
+                    "</div>";
+
+                row.querySelector('[data-act="play-beta"]').addEventListener("click", function () {
+                    playBetaBuild(sha);
+                });
+                row.querySelector('[data-act="download-beta"]').addEventListener("click", function () {
+                    downloadBetaBuild(sha, betaVersion, this);
+                });
+
+                return row;
+            }
+
             function createBuildRow(commit) {
                 var sha = commit.sha;
                 var date = commit.commit && commit.commit.committer ? commit.commit.committer.date : "";
@@ -1325,6 +1482,19 @@
                 return row;
             }
 
+            function insertBetaBelowLatest() {
+                if (!latestBetaCommit && !latestBetaVersion) return;
+                var existing = listEl.querySelector('[data-beta="1"]');
+                if (existing) existing.remove();
+
+                var betaRow = createBetaRow(latestBetaCommit, latestBetaVersion);
+                if (listEl.firstChild && listEl.firstChild.nextSibling) {
+                    listEl.insertBefore(betaRow, listEl.firstChild.nextSibling);
+                } else {
+                    listEl.appendChild(betaRow);
+                }
+            }
+
             function loadNewestOnly() {
                 if (oldVersionsLoaded || loading) return Promise.resolve();
                 loading = true;
@@ -1333,18 +1503,30 @@
                 return Promise.all([
                     ensureVersionHistory(),
                     fetchJson(API_COMMITS + "?path=index.html&per_page=1&page=1"),
-                    loadVersion("HEAD")
+                    loadVersion("HEAD"),
+                    fetchJson(API_COMMITS + "?path=index-beta.html&per_page=1&page=1").catch(function () { return []; }),
+                    loadBetaVersion("HEAD")
                 ]).then(function (results) {
                     var commits = results[1];
                     var latestVersion = results[2];
+                    var betaCommits = results[3];
+                    var betaVersion = results[4];
 
                     if (latestVersion && !wantedSha) {
                         playPrimaryEl.textContent = "Play latest (" + latestVersion + ")";
                     }
 
+                    latestBetaCommit = Array.isArray(betaCommits) && betaCommits.length > 0 ? betaCommits[0] : null;
+                    latestBetaVersion = betaVersion || "";
+
+                    if (playBetaMenuEl) {
+                        playBetaMenuEl.textContent = latestBetaVersion ? "Beta (" + latestBetaVersion + ")" : "Beta";
+                    }
+
                     if (!oldVersionsLoaded && Array.isArray(commits) && commits.length > 0) {
                         listEl.innerHTML = "";
                         listEl.appendChild(createBuildRow(commits[0]));
+                        insertBetaBelowLatest();
                         setStatus("");
                     } else if (!oldVersionsLoaded) {
                         setStatus("");
@@ -1387,6 +1569,7 @@
 
                         setStatus("");
                         commits.forEach(appendBuildRow);
+                        if (page === 1) insertBetaBelowLatest();
                         loadMoreEl.hidden = !more;
                         return commits;
                     })
@@ -1401,22 +1584,24 @@
                     });
             }
 
-            function getBuild(sha) {
-                var cached = buildCache.get(sha);
+            function getBuild(sha, fileName) {
+                var targetFile = fileName || "index.html";
+                var cacheKey = targetFile + ":" + sha;
+                var cached = buildCache.get(cacheKey);
                 if (cached) return Promise.resolve(cached);
 
-                return fetch(RAW + "/" + sha + "/index.html").then(function (res) {
+                return fetch(RAW + "/" + sha + "/" + targetFile).then(function (res) {
                     if (!res.ok) throw new Error("Could not download this build (HTTP " + res.status + ").");
                     return res.text();
                 }).then(function (html) {
                     var blob = new Blob([html], { type: "text/html" });
                     var entry = { blob: blob, url: URL.createObjectURL(blob) };
 
-                    buildCache.set(sha, entry);
+                    buildCache.set(cacheKey, entry);
                     while (buildCache.size > MAX_CACHED_BUILDS) {
-                        var oldestSha = buildCache.keys().next().value;
-                        URL.revokeObjectURL(buildCache.get(oldestSha).url);
-                        buildCache.delete(oldestSha);
+                        var oldestKey = buildCache.keys().next().value;
+                        URL.revokeObjectURL(buildCache.get(oldestKey).url);
+                        buildCache.delete(oldestKey);
                     }
                     return entry;
                 });
@@ -1428,11 +1613,11 @@
                 return "breakmine-" + (label ? label + "-" : "") + shortSha(sha) + ".html";
             }
 
-            function triggerDownload(blob, sha) {
+            function triggerDownload(blob, filename) {
                 var url = URL.createObjectURL(blob);
                 var link = document.createElement("a");
                 link.href = url;
-                link.download = buildFileName(sha);
+                link.download = filename;
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
@@ -1444,8 +1629,8 @@
                 button.disabled = true;
                 button.textContent = "…";
 
-                getBuild(sha).then(function (entry) {
-                    triggerDownload(entry.blob, sha);
+                getBuild(sha, "index.html").then(function (entry) {
+                    triggerDownload(entry.blob, buildFileName(sha));
                     button.textContent = "✓";
                     setTimeout(function () {
                         button.textContent = original;
@@ -1458,14 +1643,36 @@
                 });
             }
 
-            function resolveBuildUrl(sha) {
-                var served = DATASTORE_BASE + "/build/" + sha + "/index.html";
+            function downloadBetaBuild(sha, betaVersion, button) {
+                var original = button.textContent;
+                button.disabled = true;
+                button.textContent = "…";
+
+                getBuild(sha, "index-beta.html").then(function (entry) {
+                    var label = betaVersion ? betaVersion.replace(/[^A-Za-z0-9._-]/g, "") : "";
+                    var filename = "breakmine-beta-" + (label ? label + "-" : "") + shortSha(sha) + ".html";
+                    triggerDownload(entry.blob, filename);
+                    button.textContent = "✓";
+                    setTimeout(function () {
+                        button.textContent = original;
+                        button.disabled = false;
+                    }, 1500);
+                }).catch(function (err) {
+                    button.textContent = original;
+                    button.disabled = false;
+                    setStatus(err && err.message ? err.message : String(err), true);
+                });
+            }
+
+            function resolveBuildUrl(sha, fileName) {
+                var targetFile = fileName || "index.html";
+                var served = DATASTORE_BASE + "/build/" + sha + "/" + targetFile;
                 return fetch(served, { method: "HEAD" }).then(function (res) {
-                    return res.ok ? { url: served } : getBuild(sha).then(function (entry) {
+                    return res.ok ? { url: served } : getBuild(sha, targetFile).then(function (entry) {
                         return { url: entry.url };
                     });
                 }).catch(function () {
-                    return getBuild(sha).then(function (entry) {
+                    return getBuild(sha, targetFile).then(function (entry) {
                         return { url: entry.url };
                     });
                 });
@@ -1487,12 +1694,35 @@
                     // Blank tab navigation will still proceed.
                 }
 
-                resolveBuildUrl(sha).then(function (target) {
+                resolveBuildUrl(sha, "index.html").then(function (target) {
                     if (tab.closed) return;
                     tab.location.replace(target.url);
                 }).catch(function (err) {
                     try { tab.close(); } catch (e) {}
                     setStatus("Could not load build: " + (err && err.message ? err.message : err), true);
+                });
+            }
+
+            function playBetaBuild(sha) {
+                var tab = window.open("", "_blank");
+                if (!tab) {
+                    setStatus("Your browser blocked the new tab. Allow pop-ups and try again.", true);
+                    return;
+                }
+
+                try {
+                    tab.document.title = "Loading Breakmine Beta…";
+                    tab.document.body.innerHTML =
+                        '<p style="font:16px/1.5 sans-serif;padding:24px;">Opening Breakmine beta build ' +
+                        escapeHtml(shortSha(sha)) + "…</p>";
+                } catch (err) {}
+
+                resolveBuildUrl(sha, "index-beta.html").then(function (target) {
+                    if (tab.closed) return;
+                    tab.location.replace(target.url);
+                }).catch(function (err) {
+                    try { tab.close(); } catch (e) {}
+                    setStatus("Could not load beta build: " + (err && err.message ? err.message : err), true);
                 });
             }
 
