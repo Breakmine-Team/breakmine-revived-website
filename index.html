@@ -808,7 +808,7 @@
                     </div>
 
                     <div class="play-body">
-                        <a class="play-primary-btn" id="playPrimaryBtn" href="https://game.breakmine.com/">Play this version</a>
+                        <a class="play-primary-btn" id="playPrimaryBtn" href="https://game.breakmine.com/">Play latest</a>
                         <div class="play-status" id="launcherStatus" hidden></div>
 
                         <div class="versions-panel" id="versionsPanel">
@@ -1339,7 +1339,7 @@
                     var latestVersion = results[2];
 
                     if (latestVersion && !wantedSha) {
-                        playPrimaryEl.textContent = "Play this version (" + latestVersion + ")";
+                        playPrimaryEl.textContent = "Play latest (" + latestVersion + ")";
                     }
 
                     if (!oldVersionsLoaded && Array.isArray(commits) && commits.length > 0) {
