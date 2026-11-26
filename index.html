@@ -1710,20 +1710,7 @@
                     return;
                 }
 
-                try {
-                    tab.document.title = "Loading Breakmine Beta…";
-                    tab.document.body.innerHTML =
-                        '<p style="font:16px/1.5 sans-serif;padding:24px;">Opening Breakmine beta build ' +
-                        escapeHtml(shortSha(sha)) + "…</p>";
-                } catch (err) {}
-
-                resolveBuildUrl(sha, "index-beta.html").then(function (target) {
-                    if (tab.closed) return;
-                    tab.location.replace(target.url);
-                }).catch(function (err) {
-                    try { tab.close(); } catch (e) {}
-                    setStatus("Could not load beta build: " + (err && err.message ? err.message : err), true);
-                });
+                tab.location.replace("https://beta.breakmine.com/");
             }
 
             toggleVersionsEl.addEventListener("click", function () {
