@@ -315,9 +315,8 @@ const EDITOR_HTML = `<!DOCTYPE html>
     button { padding: 6px 10px; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #fff; cursor: pointer; font-size: 13px; }
     button:hover { background: #363636; }
     button.primary { background: #1f6feb; border-color: #1f6feb; }
-    button.primary:hover { background: #2b7af0; }
     button.danger { background: #a4262c; border-color: #a4262c; }
-    button.active-tab { background: #1f6feb; border-color: #1f6feb; }
+    button.active { background: #1f6feb; border-color: #1f6feb; }
     main { display: grid; grid-template-columns: 240px 1fr 1fr; min-height: 0; }
     aside { border-right: 1px solid #333; padding: 10px; overflow-y: auto; }
     .item { padding: 8px; border-radius: 4px; cursor: pointer; margin-bottom: 4px; }
@@ -328,10 +327,10 @@ const EDITOR_HTML = `<!DOCTYPE html>
     .pane + .pane { border-left: 1px solid #333; }
     .meta-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
     .toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; background: #1c1c1c; border: 1px solid #333; border-radius: 4px; align-items: center; }
-    .toolbar-sep { width: 1px; height: 20px; background: #333; margin: 0 4px; }
+    .sep { width: 1px; height: 20px; background: #333; margin: 0 4px; }
     .toolbar input[type="color"] { padding: 0; width: 28px; height: 28px; border: 1px solid #444; cursor: pointer; background: none; }
-    #wysiwyg { flex: 1; overflow-y: auto; background: #0b0b0b; border: 1px solid #333; border-radius: 4px; padding: 14px; outline: none; line-height: 1.6; }
-    #wysiwyg:focus { border-color: #1f6feb; }
+    #richtext { flex: 1; overflow-y: auto; background: #0b0b0b; border: 1px solid #333; border-radius: 4px; padding: 14px; outline: none; line-height: 1.6; }
+    #richtext:focus { border-color: #1f6feb; }
     textarea { flex: 1; resize: none; font-family: ui-monospace, monospace; font-size: 14px; line-height: 1.5; }
     #preview { flex: 1; overflow-y: auto; background: #0b0b0b; border: 1px solid #333; border-radius: 4px; padding: 14px; line-height: 1.6; }
     .hidden { display: none !important; }
@@ -360,38 +359,35 @@ const EDITOR_HTML = `<!DOCTYPE html>
       </div>
 
       <div class="toolbar" id="toolbar">
-        <button type="button" data-mode="visual" class="active-tab" id="tabVisual">Visual</button>
-        <button type="button" data-mode="code" id="tabCode">HTML</button>
-        <div class="toolbar-sep"></div>
+        <button type="button" id="btnRich" class="active">Rich Text</button>
+        <button type="button" id="btnHtml">HTML</button>
+        <div class="sep"></div>
 
-        <button type="button" data-action="bold" title="Bold"><b>B</b></button>
-        <button type="button" data-action="italic" title="Italic"><i>I</i></button>
-        <button type="button" data-action="underline" title="Underline"><u>U</u></button>
-        <button type="button" data-action="strike" title="Strikethrough"><s>S</s></button>
-        <div class="toolbar-sep"></div>
+        <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+        <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+        <button type="button" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+        <div class="sep"></div>
 
-        <button type="button" data-action="h1" title="Heading 1">H1</button>
-        <button type="button" data-action="h2" title="Heading 2">H2</button>
-        <button type="button" data-action="h3" title="Heading 3">H3</button>
-        <button type="button" data-action="p" title="Paragraph">P</button>
-        <div class="toolbar-sep"></div>
+        <button type="button" data-block="H1">H1</button>
+        <button type="button" data-block="H2">H2</button>
+        <button type="button" data-block="H3">H3</button>
+        <button type="button" data-block="P">P</button>
+        <button type="button" data-block="BLOCKQUOTE">Quote</button>
+        <div class="sep"></div>
 
-        <button type="button" data-action="ul" title="Bullet List">• List</button>
-        <button type="button" data-action="ol" title="Numbered List">1. List</button>
-        <button type="button" data-action="quote" title="Blockquote">“Quote</button>
-        <div class="toolbar-sep"></div>
+        <button type="button" data-cmd="insertUnorderedList">• List</button>
+        <button type="button" data-cmd="insertOrderedList">1. List</button>
+        <div class="sep"></div>
 
-        <button type="button" data-action="mono" title="Inline Monospace"></> Mono</button>
-        <button type="button" data-action="codeblock" title="Code Block">Block</button>
-        <button type="button" data-action="link" title="Insert Link">Link</button>
-        <button type="button" data-action="img" title="Insert Image URL">Image</button>
-        <div class="toolbar-sep"></div>
-
-        <input type="color" id="textColor" value="#ffffff" title="Text Color" />
-        <button type="button" data-action="clear" title="Clear Formatting">Clear</button>
+        <button type="button" id="btnMono" title="Monospace">Mono</button>
+        <button type="button" id="btnLink" title="Link">Link</button>
+        <button type="button" id="btnImg" title="Image URL">Image</button>
+        <input type="color" id="btnColor" value="#ffffff" title="Color" />
+        <button type="button" data-cmd="removeFormat" title="Clear Format">Clear</button>
       </div>
 
-      <div id="wysiwyg" contenteditable="true"></div>
+      <div id="richtext" contenteditable="true"></div>
       <textarea id="html" class="hidden" placeholder="<p>Write HTML here...</p>"></textarea>
 
       <div style="display:flex; gap:8px;">
@@ -411,15 +407,17 @@ const EDITOR_HTML = `<!DOCTYPE html>
     const titleEl = document.getElementById("title");
     const authorEl = document.getElementById("author");
     const categoryEl = document.getElementById("category");
-    const wysiwygEl = document.getElementById("wysiwyg");
+    const richEl = document.getElementById("richtext");
     const htmlEl = document.getElementById("html");
     const previewEl = document.getElementById("preview");
     const statusEl = document.getElementById("status");
-    const tabVisual = document.getElementById("tabVisual");
-    const tabCode = document.getElementById("tabCode");
+    const btnRich = document.getElementById("btnRich");
+    const btnHtml = document.getElementById("btnHtml");
+
+    document.execCommand("styleWithCSS", false, true);
 
     let currentFile = null;
-    let editorMode = "visual";
+    let mode = "rich";
     pwEl.value = sessionStorage.getItem("article_pw") || "";
 
     function setStatus(msg) { statusEl.textContent = msg; }
@@ -429,219 +427,122 @@ const EDITOR_HTML = `<!DOCTYPE html>
       return pw;
     }
 
-    function syncFromVisual() {
-      htmlEl.value = wysiwygEl.innerHTML;
-      previewEl.innerHTML = htmlEl.value;
-    }
-
-    function syncFromCode() {
-      wysiwygEl.innerHTML = htmlEl.value;
-      previewEl.innerHTML = htmlEl.value;
-    }
-
-    function setMode(mode) {
-      editorMode = mode;
-      if (mode === "visual") {
-        syncFromCode();
-        wysiwygEl.classList.remove("hidden");
-        htmlEl.classList.add("hidden");
-        tabVisual.classList.add("active-tab");
-        tabCode.classList.remove("active-tab");
-      } else {
-        syncFromVisual();
-        wysiwygEl.classList.add("hidden");
-        htmlEl.classList.remove("hidden");
-        tabCode.classList.add("active-tab");
-        tabVisual.classList.remove("active-tab");
-      }
-    }
-
-    tabVisual.onclick = () => setMode("visual");
-    tabCode.onclick = () => setMode("code");
-
-    // Helper: Wrap current selection in an inline-styled element
-    function wrapSelection(tagName, styleStr, fallbackText = "text") {
-      wysiwygEl.focus();
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) return;
-
-      const range = sel.getRangeAt(0);
-      if (!wysiwygEl.contains(range.commonAncestorContainer)) return;
-
-      const el = document.createElement(tagName);
-      if (styleStr) el.setAttribute("style", styleStr);
-
-      if (range.collapsed) {
-        el.textContent = fallbackText;
-        range.insertNode(el);
-        range.selectNodeContents(el);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } else {
-        const fragment = range.extractContents();
-        el.appendChild(fragment);
-        range.insertNode(el);
-        range.selectNodeContents(el);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-      syncFromVisual();
-    }
-
-    // Helper: Insert an HTML node at caret
-    function insertHtmlNode(node) {
-      wysiwygEl.focus();
-      const sel = window.getSelection();
-      let range;
-      if (sel && sel.rangeCount > 0 && wysiwygEl.contains(sel.getRangeAt(0).commonAncestorContainer)) {
-        range = sel.getRangeAt(0);
-        range.deleteContents();
-      } else {
-        range = document.createRange();
-        range.selectNodeContents(wysiwygEl);
-        range.collapse(false);
-      }
-      range.insertNode(node);
-      range.setStartAfter(node);
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-      syncFromVisual();
-    }
-
-    // Helper: Apply block-level tag with inline styles
-    function applyBlockStyle(tag, styleStr) {
-      wysiwygEl.focus();
-      document.execCommand("formatBlock", false, tag);
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        let node = sel.anchorNode;
-        while (node && node !== wysiwygEl) {
-          if (node.nodeType === 1 && node.tagName.toLowerCase() === tag.toLowerCase()) {
-            if (styleStr) node.setAttribute("style", styleStr);
-            else node.removeAttribute("style");
-            break;
-          }
-          node = node.parentNode;
-        }
-      }
-      syncFromVisual();
-    }
-
-    // Toolbar actions
-    document.getElementById("toolbar").addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-action]");
-      if (!btn) return;
-      if (editorMode !== "visual") setMode("visual");
-
-      const action = btn.dataset.action;
-
-      switch (action) {
-        case "bold":
-          wrapSelection("span", "font-weight: bold;");
-          break;
-        case "italic":
-          wrapSelection("span", "font-style: italic;");
-          break;
-        case "underline":
-          wrapSelection("span", "text-decoration: underline;");
-          break;
-        case "strike":
-          wrapSelection("span", "text-decoration: line-through;");
-          break;
-        case "h1":
-          applyBlockStyle("h1", "font-size: 2em; font-weight: bold; margin: 16px 0 8px 0;");
-          break;
-        case "h2":
-          applyBlockStyle("h2", "font-size: 1.5em; font-weight: bold; margin: 14px 0 8px 0;");
-          break;
-        case "h3":
-          applyBlockStyle("h3", "font-size: 1.25em; font-weight: bold; margin: 12px 0 6px 0;");
-          break;
-        case "p":
-          applyBlockStyle("p", "margin: 0 0 12px 0;");
-          break;
-        case "ul":
-          document.execCommand("insertUnorderedList");
-          wysiwygEl.querySelectorAll("ul").forEach(ul => {
-            if (!ul.getAttribute("style")) ul.setAttribute("style", "margin: 8px 0; padding-left: 24px;");
-          });
-          syncFromVisual();
-          break;
-        case "ol":
-          document.execCommand("insertOrderedList");
-          wysiwygEl.querySelectorAll("ol").forEach(ol => {
-            if (!ol.getAttribute("style")) ol.setAttribute("style", "margin: 8px 0; padding-left: 24px;");
-          });
-          syncFromVisual();
-          break;
-        case "quote":
-          applyBlockStyle("blockquote", "border-left: 3px solid #555; padding-left: 12px; margin: 12px 0; color: #bbb; font-style: italic;");
-          break;
-        case "mono":
-          wrapSelection("span", "font-family:monospace; margin-left: 3px; margin-right: 3px;", "/tp");
-          break;
-        case "codeblock": {
-          const pre = document.createElement("pre");
-          pre.setAttribute("style", "font-family: monospace; background: #161616; color: #e6edf3; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 12px 0;");
-          const sel = window.getSelection();
-          const selectedText = sel && !sel.isCollapsed ? sel.toString() : "// code block";
-          pre.textContent = selectedText;
-          insertHtmlNode(pre);
-          break;
-        }
-        case "link": {
-          const url = prompt("Enter URL:", "https://");
-          if (!url) return;
-          const sel = window.getSelection();
-          const label = sel && !sel.isCollapsed ? sel.toString() : url;
-          const a = document.createElement("a");
-          a.href = url.trim();
-          a.textContent = label;
-          a.setAttribute("style", "color: #58a6ff; text-decoration: underline;");
-          insertHtmlNode(a);
-          break;
-        }
-        case "img": {
-          const url = prompt("Enter Image URL:", "https://");
-          if (!url) return;
-          const alt = prompt("Alt text (optional):", "") || "";
-          const img = document.createElement("img");
-          img.src = url.trim();
-          if (alt) img.alt = alt;
-          img.setAttribute("style", "max-width: 500px; width: 100%; height: auto; display: block; margin: 12px 0;");
-          insertHtmlNode(img);
-          break;
-        }
-        case "clear": {
-          const sel = window.getSelection();
-          if (sel && !sel.isCollapsed) {
-            const plain = document.createTextNode(sel.toString());
-            insertHtmlNode(plain);
-          }
-          break;
-        }
-      }
-    });
-
-    // Text color picker (inline style)
-    document.getElementById("textColor").addEventListener("change", (e) => {
-      if (editorMode !== "visual") setMode("visual");
-      wrapSelection("span", "color: " + e.target.value + ";");
-    });
-
-    // Ensure any pasted images also obey max-width: 500px inline
-    wysiwygEl.addEventListener("input", () => {
-      wysiwygEl.querySelectorAll("img").forEach(img => {
-        if (!img.style.maxWidth) {
-          img.style.maxWidth = "500px";
-          img.style.height = "auto";
+    function enforceInlineStyles(container) {
+      container.querySelectorAll("img").forEach((img) => {
+        img.style.maxWidth = "500px";
+        img.style.height = "auto";
+      });
+      container.querySelectorAll("code").forEach((codeEl) => {
+        const span = document.createElement("span");
+        span.setAttribute("style", "font-family:monospace; margin-left: 3px; margin-right: 3px;");
+        span.textContent = codeEl.textContent;
+        codeEl.replaceWith(span);
+      });
+      container.querySelectorAll("span").forEach((span) => {
+        const fam = (span.style.fontFamily || "").toLowerCase();
+        if (fam.includes("monospace")) {
+          span.setAttribute("style", "font-family:monospace; margin-left: 3px; margin-right: 3px;");
         }
       });
-      syncFromVisual();
+    }
+
+    function syncFromRich() {
+      enforceInlineStyles(richEl);
+      htmlEl.value = richEl.innerHTML;
+      previewEl.innerHTML = htmlEl.value;
+    }
+
+    function syncFromHtml() {
+      richEl.innerHTML = htmlEl.value;
+      enforceInlineStyles(richEl);
+      previewEl.innerHTML = htmlEl.value;
+    }
+
+    function switchMode(nextMode) {
+      mode = nextMode;
+      if (mode === "rich") {
+        syncFromHtml();
+        richEl.classList.remove("hidden");
+        htmlEl.classList.add("hidden");
+        btnRich.classList.add("active");
+        btnHtml.classList.remove("active");
+      } else {
+        syncFromRich();
+        richEl.classList.add("hidden");
+        htmlEl.classList.remove("hidden");
+        btnHtml.classList.add("active");
+        btnRich.classList.remove("active");
+      }
+    }
+
+    btnRich.onclick = () => switchMode("rich");
+    btnHtml.onclick = () => switchMode("html");
+
+    document.querySelectorAll("button[data-cmd]").forEach((btn) => {
+      btn.onclick = () => {
+        if (mode !== "rich") switchMode("rich");
+        richEl.focus();
+        document.execCommand(btn.dataset.cmd, false, null);
+        syncFromRich();
+      };
     });
 
-    htmlEl.addEventListener("input", syncFromCode);
+    document.querySelectorAll("button[data-block]").forEach((btn) => {
+      btn.onclick = () => {
+        if (mode !== "rich") switchMode("rich");
+        richEl.focus();
+        document.execCommand("formatBlock", false, btn.dataset.block);
+        syncFromRich();
+      };
+    });
+
+    document.getElementById("btnColor").addEventListener("change", (e) => {
+      if (mode !== "rich") switchMode("rich");
+      richEl.focus();
+      document.execCommand("foreColor", false, e.target.value);
+      syncFromRich();
+    });
+
+    document.getElementById("btnLink").onclick = () => {
+      const url = prompt("Link URL:", "https://");
+      if (!url) return;
+      if (mode !== "rich") switchMode("rich");
+      richEl.focus();
+      document.execCommand("createLink", false, url.trim());
+      syncFromRich();
+    };
+
+    document.getElementById("btnImg").onclick = () => {
+      const url = prompt("Image URL:", "https://");
+      if (!url) return;
+      if (mode !== "rich") switchMode("rich");
+      richEl.focus();
+      const safeUrl = url.trim().replace(/"/g, """);
+      document.execCommand(
+        "insertHTML",
+        false,
+        '<img src="' + safeUrl + '" style="max-width: 500px; height: auto;" />'
+      );
+      syncFromRich();
+    };
+
+    document.getElementById("btnMono").onclick = () => {
+      if (mode !== "rich") switchMode("rich");
+      richEl.focus();
+      const sel = window.getSelection();
+      const text = sel && !sel.isCollapsed ? sel.toString() : "/tp";
+      document.execCommand(
+        "insertHTML",
+        false,
+        '<span style="font-family:monospace; margin-left: 3px; margin-right: 3px;">' +
+          text.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">") +
+          "</span>"
+      );
+      syncFromRich();
+    };
+
+    richEl.addEventListener("input", syncFromRich);
+    htmlEl.addEventListener("input", syncFromHtml);
 
     async function loadList() {
       const res = await fetch("/articles", { cache: "no-store" });
@@ -671,7 +572,7 @@ const EDITOR_HTML = `<!DOCTYPE html>
       authorEl.value = data.author || "";
       categoryEl.value = data.category || "update";
       htmlEl.value = data.html || "";
-      syncFromCode();
+      syncFromHtml();
       loadList();
       setStatus("Editing " + data.file);
     }
@@ -682,14 +583,14 @@ const EDITOR_HTML = `<!DOCTYPE html>
       titleEl.value = "";
       authorEl.value = "";
       categoryEl.value = "update";
-      htmlEl.value = '<p style="margin: 0 0 12px 0;">Hello world</p>';
-      syncFromCode();
+      htmlEl.value = "<p>Hello world</p>";
+      syncFromHtml();
       loadList();
       setStatus("New article");
     }
 
     async function saveArticle() {
-      if (editorMode === "visual") syncFromVisual();
+      if (mode === "rich") syncFromRich();
       const file = fileEl.value.trim();
       if (!file.endsWith(".html")) return setStatus("Filename must end in .html");
       const payload = {
