@@ -11,6 +11,10 @@ const ARTICLE_BASE_URL = (
   process.env.ARTICLE_BASE_URL || "https://breakmine.com/#article/"
 ).trim();
 
+const BOTW_FILE = path.resolve(
+  process.env.BUILD_OF_THE_WEEK_FILE || "./build-of-the-week.json"
+);
+
 const DISCORD_TOKEN = (process.env.DISCORD_TOKEN || "").trim();
 const DISCORD_CHANNEL_ID = (process.env.DISCORD_CHANNEL_ID || "").trim();
 const DISCORD_STATE_FILE = path.resolve(
@@ -31,6 +35,36 @@ const DISCORD_API_BASE = "https://discord.com/api/v10";
 const MESSAGE_FLAG_SUPPRESS_EMBEDS = 1 << 2; // 4
 
 fs.mkdirSync(ARTICLES_DIR, { recursive: true });
+
+/* -------------------- Build of the Week -------------------- */
+
+function loadBuildOfTheWeek() {
+  const fallback = { name: "", author: "", image: "", updatedAt: "" };
+  try {
+    if (!fs.existsSync(BOTW_FILE)) return fallback;
+    const parsed = JSON.parse(fs.readFileSync(BOTW_FILE, "utf8"));
+    return {
+      name: typeof parsed?.name === "string" ? parsed.name.trim() : "",
+      author: typeof parsed?.author === "string" ? parsed.author.trim() : "",
+      image: typeof parsed?.image === "string" ? parsed.image.trim() : "",
+      updatedAt: typeof parsed?.updatedAt === "string" ? parsed.updatedAt : "",
+    };
+  } catch (err) {
+    console.warn("Failed to load build of the week file:", err.message);
+    return fallback;
+  }
+}
+
+function saveBuildOfTheWeek(data) {
+  const clean = {
+    name: typeof data?.name === "string" ? data.name.trim() : "",
+    author: typeof data?.author === "string" ? data.author.trim() : "",
+    image: typeof data?.image === "string" ? data.image.trim() : "",
+    updatedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(BOTW_FILE, JSON.stringify(clean, null, 2), "utf8");
+  return clean;
+}
 
 /* -------------------- Web Push (VAPID + RFC 8291 / 8188) -------------------- */
 
@@ -541,7 +575,11 @@ const EDITOR_HTML = `<!DOCTYPE html>
     button.danger { background: #a4262c; border-color: #a4262c; }
     button.active { background: #1f6feb; border-color: #1f6feb; }
     main { display: grid; grid-template-columns: 240px 1fr 1fr; min-height: 0; }
-    aside { border-right: 1px solid #333; padding: 10px; overflow-y: auto; }
+    aside { border-right: 1px solid #333; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .list-section { flex: 1; overflow-y: auto; }
+    .botw-box { border-top: 1px solid #333; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .botw-box strong { font-size: 13px; }
+    .botw-preview { height: 72px; border-radius: 4px; border: 1px solid #333; background: #0b0b0b center/cover no-repeat; }
     .item { padding: 8px; border-radius: 4px; cursor: pointer; margin-bottom: 4px; }
     .item:hover { background: #222; }
     .item.active { background: #1f6feb; }
@@ -567,7 +605,17 @@ const EDITOR_HTML = `<!DOCTYPE html>
     <span id="status"></span>
   </header>
   <main>
-    <aside id="list"></aside>
+    <aside>
+      <div class="list-section" id="list"></div>
+      <div class="botw-box">
+        <strong>Build of the Week</strong>
+        <input id="botwNameInput" type="text" placeholder="Build Name" />
+        <input id="botwAuthorInput" type="text" placeholder="Author / Builder" />
+        <input id="botwImageInput" type="url" placeholder="Image URL (https://...)" />
+        <div class="botw-preview" id="botwPreview"></div>
+        <button class="primary" id="botwSaveBtn" type="button">Save Build of the Week</button>
+      </div>
+    </aside>
     <div class="pane">
       <div class="meta-row">
         <input id="file" type="text" placeholder="my-article.html" />
@@ -636,6 +684,11 @@ const EDITOR_HTML = `<!DOCTYPE html>
     const statusEl = document.getElementById("status");
     const btnRich = document.getElementById("btnRich");
     const btnHtml = document.getElementById("btnHtml");
+    const botwNameInput = document.getElementById("botwNameInput");
+    const botwAuthorInput = document.getElementById("botwAuthorInput");
+    const botwImageInput = document.getElementById("botwImageInput");
+    const botwPreview = document.getElementById("botwPreview");
+    const botwSaveBtn = document.getElementById("botwSaveBtn");
 
     document.execCommand("styleWithCSS", false, true);
 
@@ -649,6 +702,50 @@ const EDITOR_HTML = `<!DOCTYPE html>
       sessionStorage.setItem("article_pw", pw);
       return pw;
     }
+
+    function updateBotwPreview() {
+      const url = botwImageInput.value.trim();
+      if (/^https?:\/\//i.test(url)) {
+        botwPreview.style.backgroundImage = 'url("' + url.replace(/"/g, "%22") + '")';
+      } else {
+        botwPreview.style.backgroundImage = "";
+      }
+    }
+
+    botwImageInput.addEventListener("input", updateBotwPreview);
+
+    async function loadBotw() {
+      try {
+        const res = await fetch("/buildoftheweek", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        botwNameInput.value = data.name || "";
+        botwAuthorInput.value = data.author || "";
+        botwImageInput.value = data.image || "";
+        updateBotwPreview();
+      } catch {}
+    }
+
+    async function saveBotw() {
+      const res = await fetch("/buildoftheweek", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + getPw(),
+        },
+        body: JSON.stringify({
+          name: botwNameInput.value,
+          author: botwAuthorInput.value,
+          image: botwImageInput.value,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return setStatus("BOTW Error: " + (data.error || res.status));
+      updateBotwPreview();
+      setStatus("Saved Build of the Week");
+    }
+
+    botwSaveBtn.onclick = saveBotw;
 
     function enforceInlineStyles(container) {
       container.querySelectorAll("img").forEach((img) => {
@@ -856,11 +953,15 @@ const EDITOR_HTML = `<!DOCTYPE html>
       setStatus("Deleted");
     }
 
-    document.getElementById("refreshBtn").onclick = loadList;
+    document.getElementById("refreshBtn").onclick = () => {
+      loadList();
+      loadBotw();
+    };
     document.getElementById("newBtn").onclick = newArticle;
     document.getElementById("saveBtn").onclick = saveArticle;
     document.getElementById("delBtn").onclick = deleteArticle;
 
+    loadBotw();
     newArticle();
   </script>
 </body>
@@ -886,6 +987,19 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    if (req.method === "GET" && url.pathname === "/buildoftheweek") {
+      return sendJson(res, 200, loadBuildOfTheWeek());
+    }
+
+    if (req.method === "PUT" && url.pathname === "/buildoftheweek") {
+      if (!isAuthorized(req)) {
+        return sendJson(res, 401, { error: "Unauthorized" });
+      }
+      const body = await readJsonBody(req);
+      const saved = saveBuildOfTheWeek(body);
+      return sendJson(res, 200, { ok: true, ...saved });
+    }
+
     if (req.method === "GET" && url.pathname === "/push/vapid-public-key") {
       return sendJson(res, 200, { publicKey: vapidKeys.publicKey });
     }
