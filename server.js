@@ -705,12 +705,15 @@ const EDITOR_HTML = `<!DOCTYPE html>
 
     function updateBotwPreview() {
       const url = botwImageInput.value.trim();
+
       if (/^https?:\/\//i.test(url)) {
-        botwPreview.style.backgroundImage = 'url("' + url.replace(/"/g, "%22") + '")';
+        const safeUrl = url.replace(/ /g, '%20').replace(/"/g, '%22');
+        botwPreview.style.backgroundImage = \`url("${safeUrl}")\`;
       } else {
-        botwPreview.style.backgroundImage = "";
+        botwPreview.style.backgroundImage = '';
       }
     }
+
 
     botwImageInput.addEventListener("input", updateBotwPreview);
 
