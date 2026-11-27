@@ -271,6 +271,107 @@
             position: relative;
         }
 
+        /* Build of the Week Section */
+        .botw-section {
+            flex-shrink: 0;
+            margin-bottom: 1rem;
+        }
+
+        .botw-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 2px 5px;
+            margin-bottom: 0.65rem;
+            background-image: url('stone.png');
+            background-size: 64px;
+            background-repeat: repeat;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .botw-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .botw-card {
+            background-color: rgba(0, 0, 0, 0.25);
+            box-shadow:
+                inset 0 25px 20px -15px rgba(0, 0, 0, 0.45),
+                inset 0 -25px 20px -15px rgba(0, 0, 0, 0.45);
+            padding: 0.85rem 1rem;
+        }
+
+        .botw-showcase {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background-color: #141414;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .botw-showcase::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(10, 10, 10, 0.05) 0%,
+                rgba(10, 10, 10, 0.3) 45%,
+                rgba(10, 10, 10, 0.85) 82%,
+                rgba(10, 10, 10, 0.96) 100%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .botw-caption {
+            position: relative;
+            z-index: 2;
+            padding: 0.75rem 0.95rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95);
+        }
+
+        .botw-name {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            line-height: 1.25;
+        }
+
+        .botw-author {
+            margin: 0.15rem 0 0 0;
+            font-size: 0.88rem;
+            color: #ddd;
+            line-height: 1.3;
+        }
+
+        .botw-footer {
+            margin: 0.65rem 0 0 0;
+            text-align: center;
+            font-size: 0.92rem;
+            color: #e6e6e6;
+        }
+
+        .news-section {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
         .news-scroll-container {
             flex: 1;
             min-height: 0;
@@ -856,7 +957,24 @@
 
     <div class="scroll-area" id="scrollArea">
         <div class="page-wrap">
-            <main class="main-col" id="app"></main>
+            <div class="main-col">
+                <section class="botw-section" aria-label="Build of the Week">
+                    <div class="botw-header">
+                        <h1>Build of the Week</h1>
+                    </div>
+                    <div class="botw-card" id="botwCard">
+                        <div class="botw-showcase" id="botwShowcase">
+                            <div class="botw-caption">
+                                <div class="botw-name" id="botwName">Name</div>
+                                <div class="botw-author" id="botwAuthor">builder</div>
+                            </div>
+                        </div>
+                        <p class="botw-footer">Find this build, and others, on the Nino Creative server!</p>
+                    </div>
+                </section>
+
+                <main class="news-section" id="app"></main>
+            </div>
 
             <div class="sidebar-col">
                 <div class="sidebar-header">
@@ -911,12 +1029,54 @@
     <script>
         const API_BASE = 'https://newsfeedapi.breakmine.com';
         const appEl = document.getElementById('app');
+        const botwShowcaseEl = document.getElementById('botwShowcase');
+        const botwNameEl = document.getElementById('botwName');
+        const botwAuthorEl = document.getElementById('botwAuthor');
 
         let articles = [];
         let isLoading = true;
         let loadError = null;
         let currentCategory = 'all';
         let pushSubscribed = false;
+
+        function isSafeImageUrl(rawUrl) {
+            if (!rawUrl || typeof rawUrl !== 'string') return false;
+            const trimmed = rawUrl.trim();
+            if (!trimmed) return false;
+            try {
+                const parsed = new URL(trimmed, window.location.origin);
+                return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+            } catch {
+                return false;
+            }
+        }
+
+        function renderBuildOfTheWeek(botw) {
+            const name = (botw && typeof botw.name === 'string' && botw.name.trim()) ? botw.name.trim() : 'Name';
+            const author = (botw && typeof botw.author === 'string' && botw.author.trim()) ? botw.author.trim() : 'builder';
+            const image = (botw && typeof botw.image === 'string') ? botw.image.trim() : '';
+
+            botwNameEl.textContent = name;
+            botwAuthorEl.textContent = author;
+
+            if (isSafeImageUrl(image)) {
+                botwShowcaseEl.style.backgroundImage = `url("${image.replace(/"/g, '%22')}")`;
+            } else {
+                botwShowcaseEl.style.backgroundImage = '';
+            }
+        }
+
+        async function fetchBuildOfTheWeek() {
+            try {
+                const res = await fetch(`${API_BASE}/buildoftheweek`, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                renderBuildOfTheWeek(data);
+            } catch (err) {
+                console.error('Build of the Week fetch error:', err);
+                renderBuildOfTheWeek(null);
+            }
+        }
 
         function stripTags(html) {
             const div = document.createElement('div');
@@ -1222,6 +1382,7 @@
         }
 
         window.addEventListener('hashchange', handleRoute);
+        fetchBuildOfTheWeek();
         fetchArticles();
 
         /* Integrated Launcher Logic */
